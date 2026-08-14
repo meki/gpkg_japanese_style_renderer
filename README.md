@@ -16,7 +16,7 @@ cd web && npm install
 ## 開発サーバの起動
 
 ```bash
-uv run uvicorn gpkg_jsr.api.app:app --reload --port 8000
+uv run uvicorn gpkg_jsr.api.app:app --reload --port 8001
 ```
 
 ```bash

@@ -81,15 +81,19 @@ CDN を使わず自己ホストする (RQ-08-01)。書体は `index.css` の
 サーバの起動 (2 つとも起動する):
 
 ```bash
-uv run uvicorn gpkg_jsr.api.app:app --reload --port 8000
+uv run uvicorn gpkg_jsr.api.app:app --reload --port 8001
 ```
 
 ```bash
 cd web && npm install && npm run dev
 ```
 
-`web/vite.config.ts` の dev サーバは `/api` を `http://127.0.0.1:8000` へプロキシする
-(ポート番号を変える場合はここも合わせて変更する)。フロントエンドの検証コマンド:
+`web/vite.config.ts` の dev サーバは `/api` を `http://127.0.0.1:8001` へプロキシする
+(ポート番号を変える場合はここも合わせて変更する)。ポート 8000 は環境によって
+VS Code 等の他プロセスにすでに使われていることがあり、その場合 uvicorn 起動時に
+`ERROR: [WinError 10013] アクセス許可で禁じられた方法でソケットにアクセスしよう
+としました。` が出る。`Get-NetTCPConnection -LocalPort <port>` (PowerShell) で
+そのポートを掴んでいるプロセスを特定できる。フロントエンドの検証コマンド:
 
 ```bash
 cd web && npx tsc -b && npm run lint && npm run test && npm run build

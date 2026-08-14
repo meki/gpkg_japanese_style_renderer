@@ -6,7 +6,7 @@ Vite + React + TypeScript。バックエンド (FastAPI) との役割分担・�
 
 ## セットアップと起動
 
-バックエンド (`uv run uvicorn gpkg_jsr.api.app:app --reload --port 8000`、リポジトリ
+バックエンド (`uv run uvicorn gpkg_jsr.api.app:app --reload --port 8001`、リポジトリ
 ルートで実行) を先に起動してから、以下を実行する。
 
 ```bash
@@ -15,7 +15,9 @@ npm run dev
 ```
 
 `vite.config.ts` の dev サーバプロキシにより、`/api` へのリクエストは
-`http://127.0.0.1:8000` へ転送される。
+`http://127.0.0.1:8001` へ転送される。ポート 8000 は環境によって VS Code 等の
+他プロセスに使われていることがあるため 8001 を既定にしている
+(`WinError 10013` 等でバックエンドが起動しない場合はポートの競合を疑うこと)。
 
 ## 検証コマンド
 
