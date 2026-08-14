@@ -53,6 +53,7 @@ class MarriageEdge(BaseModel):
 class ChildEdge(BaseModel):
     family_handle: str
     child_handle: str
+    parent_handles: list[str]  # 1件 (単親) または 2件 (両親)。DF-01-04 参照
     relation: str  # "birth" | "adopted"
     points: list[tuple[float, float]]
 

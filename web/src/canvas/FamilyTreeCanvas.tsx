@@ -1,4 +1,5 @@
 import type { LayoutResult } from "../types/layout";
+import { DEFAULT_DISPLAY_OPTIONS, type DisplayOptions } from "../types/displayOptions";
 import { ConnectorLayer } from "./ConnectorLayer";
 import { VerticalNode } from "./VerticalNode";
 
@@ -9,9 +10,24 @@ const UNIT_PX = 32;
 interface FamilyTreeCanvasProps {
   layout: LayoutResult;
   projectId: string;
+  zoom: number;
+  displayOptions?: DisplayOptions;
+  onNodeDragEnd?: (handle: string, x: number, y: number) => void;
+  collapsibleHandles?: ReadonlySet<string>;
+  collapsedHandles?: ReadonlySet<string>;
+  onToggleCollapse?: (handle: string) => void;
 }
 
-export function FamilyTreeCanvas({ layout, projectId }: FamilyTreeCanvasProps) {
+export function FamilyTreeCanvas({
+  layout,
+  projectId,
+  zoom,
+  displayOptions = DEFAULT_DISPLAY_OPTIONS,
+  onNodeDragEnd = () => {},
+  collapsibleHandles,
+  collapsedHandles,
+  onToggleCollapse = () => {},
+}: FamilyTreeCanvasProps) {
   const allNodes = [...layout.nodes, ...layout.auxiliary_nodes];
   const maxX = Math.max(0, ...allNodes.map((n) => n.x + n.width));
   const maxY = Math.max(0, ...allNodes.map((n) => n.y + n.height));
@@ -35,8 +51,14 @@ export function FamilyTreeCanvas({ layout, projectId }: FamilyTreeCanvasProps) {
           key={node.handle}
           node={node}
           scale={UNIT_PX}
+          zoom={zoom}
           projectId={projectId}
           totalWidth={maxX}
+          displayOptions={displayOptions}
+          onDragEnd={onNodeDragEnd}
+          isCollapsible={collapsibleHandles?.has(node.handle) ?? false}
+          isCollapsed={collapsedHandles?.has(node.handle) ?? false}
+          onToggleCollapse={onToggleCollapse}
         />
       ))}
     </div>

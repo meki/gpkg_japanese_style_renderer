@@ -105,12 +105,13 @@
 {
   "family_handle": "_fXXXX",
   "child_handle": "_pCCCC",
+  "parent_handles": ["_pAAAA", "_pBBBB"],
   "relation": "birth",
   "points": [[150.0, 340.0], [150.0, 360.0], [200.0, 360.0], [200.0, 420.0]]
 }
 ```
 
-`relation` は `"birth"` | `"adopted"`。`points` は SP-02-04 の 3 セグメント（始点→水平→垂直）を明示的な折れ点列として持ち、描画層でのルーティング再計算を不要にする。
+`relation` は `"birth"` | `"adopted"`。`points` は SP-02-04 の 3 セグメント（始点→水平→垂直）を明示的な折れ点列として持ち、描画層でのルーティング再計算を不要にする。`parent_handles` はレイアウト対象に含まれる親の `handle`（両親が対象なら 2 件、単親家庭または一方が対象範囲外なら 1 件）。`MarriageEdge` は両親がそろっている family にしか存在しないため（SP-02-03）、子孫方向の到達可能集合をクライアント側で辿る用途（枝の表示/非表示、SP-05-02）には `MarriageEdge` ではなく本フィールドを使う。
 
 ## TilePage（A4 タイル印刷）
 

@@ -51,6 +51,7 @@ export type ChildRelation = "birth" | "adopted";
 export interface ChildEdge {
   family_handle: string;
   child_handle: string;
+  parent_handles: string[];
   relation: ChildRelation;
   points: [number, number][];
 }

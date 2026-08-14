@@ -30,6 +30,35 @@
   opacity: 0.92;
 }
 
+.vertical-node {
+  cursor: grab;
+  touch-action: none;
+}
+
+.vertical-node--dragging {
+  cursor: grabbing;
+  opacity: 0.85;
+  z-index: 10;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+}
+
+.vertical-node__collapse-toggle {
+  writing-mode: horizontal-tb;
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 16px;
+  line-height: 14px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--fg-line, #333);
+  background: #fff;
+  font-size: 11px;
+  cursor: pointer;
+}
+
 .vertical-node__name {
   font-size: 1em;
   line-height: 1.15;

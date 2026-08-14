@@ -38,6 +38,31 @@
   font-size: 13px;
 }
 
+.app__edit-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 16px;
+  background: #333;
+  color: #eee;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+
+.app__edit-bar button {
+  font-size: 12px;
+}
+
+.app__edit-bar-separator {
+  width: 1px;
+  height: 16px;
+  background: #666;
+}
+
+.app__hidden-file-input {
+  display: none;
+}
+
 .app__canvas-area {
   flex: 1;
   min-height: 0;

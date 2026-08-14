@@ -157,6 +157,13 @@ class TestEdges:
         assert relation_by_child["_p0010"] == "birth"  # 六郎
         assert relation_by_child["_p0008"] == "birth"  # 五子
 
+    def test_child_edge_parent_handles(self, minimal_family_xml_bytes: bytes) -> None:
+        db = _load(minimal_family_xml_bytes)
+        taro = db.people["_p0001"]
+        result = build_layout(db, taro, lineage_surnames=frozenset({"山田"}))
+        edge = next(e for e in result.child_edges if e.child_handle == "_p0003")
+        assert set(edge.parent_handles) == {"_p0001", "_p0002"}  # 太郎・花子
+
     def test_child_edge_is_a_three_segment_polyline(
         self, minimal_family_xml_bytes: bytes
     ) -> None:

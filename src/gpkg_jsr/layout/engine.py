@@ -208,6 +208,8 @@ def build_layout(
                 )
             )
 
+        parent_handles = [h for h in (father, mother) if h in included]
+
         parent_bottom = generation_y[parent_gen] + generation_height[parent_gen]
         bar_y = parent_bottom + GENERATION_GAP / 2
         for child_ref in family.children:
@@ -225,6 +227,7 @@ def build_layout(
                 ChildEdge(
                     family_handle=family.handle,
                     child_handle=child_ref.person_handle,
+                    parent_handles=parent_handles,
                     relation=relation,
                     points=[
                         (start_x, parent_bottom),

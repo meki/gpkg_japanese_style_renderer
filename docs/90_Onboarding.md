@@ -55,7 +55,16 @@ web/src/
   canvas/ConnectorLayer.tsx SVG による夫婦連結線・親子接続線 (Phase 3)
   canvas/Viewport.tsx       パン・ズーム (Phase 3)
   canvas/FamilyTreeCanvas.tsx 上記3つを束ね、並び順軸の左右反転を適用する (Phase 3)
+  editing/overrides.ts     オーバーライドレイヤー (ADR-02, DF-03-04)。ベースラインの
+                           LayoutResult に位置・非表示の差分を適用する純粋関数 (Phase 4)
+  editing/commandStack.ts  Undo/Redo 用のメメント方式コマンドスタック。ノード移動・
+                           枝の折りたたみ・自動レイアウト再実行をすべて
+                           Overrides のスナップショット差分として扱う (Phase 4)
 ```
+
+`web/src/App.tsx` がこれらを結線する: `baseLayout` (サーバから取得したベースライン) +
+`overrides` (state) を `applyOverrides` で合成して描画し、編集操作は
+`commandStackRef.current.push(...)` してから `setOverrides(next)` する。
 
 サーバの起動 (2 つとも起動する):
 
@@ -71,12 +80,14 @@ cd web && npm install && npm run dev
 (ポート番号を変える場合はここも合わせて変更する)。フロントエンドの検証コマンド:
 
 ```bash
-cd web && npx tsc -b && npm run lint && npm run build
+cd web && npx tsc -b && npm run lint && npm run test && npm run build
 ```
 
 `GET /api/v1/layout` は現状 `root_handle` が必須 (11_specifications-APIs.md の
-API-02-01 の実装範囲メモを参照)。「全人物を1つの図に」(RQ-05-01) は Phase 4 で
-拡張する。
+API-02-01 の実装範囲メモを参照)。「全人物を1つの図に」(RQ-05-01) は今後拡張する。
+プロジェクト保存/読込 (RQ-05-08) はサーバを経由せず `App.tsx` 内でブラウザの
+ファイル保存/読込ダイアログのみを使って完結させている (API-04-01/04-02 の
+実装範囲メモを参照)。
 
 **並び順軸 (x) の左右反転を忘れないこと**: `layout.engine.build_layout` が返す
 x 座標は「年長者が小さい x」の抽象順序であり、日本式表示 (年長者を右に配置、
@@ -84,5 +95,19 @@ RQ-02-03) への変換は描画層 (`FamilyTreeCanvas.tsx`) の責務。この�
 の初回実装で一度見落とし、ブラウザでの目視確認で気づいて修正した
 (10_specifications.md の SP-02-07 を参照)。ノード・接続線の両方に同じ反転を
 一貫して適用すること。
+
+**ドラッグ操作は state ではなく ref で確定値を読むこと**: `VerticalNode.tsx` の
+ドラッグ実装で、`pointerup` ハンドラが `pointermove` で更新した React state
+(`dragOffsetPx`) を直接読むと、両イベントが同一タスク内で連続発火した場合に
+古いクロージャの値 (更新前の state) を読んでしまい、ドラッグ操作が
+コマンドとして積まれないことがある。ブラウザでの目視確認 (合成 PointerEvent
+の連続ディスパッチ) で発見した。確定時に読む値は `useRef` (`latestOffsetPx`)
+に持たせ、`dragOffsetPx` state は描画プレビュー専用にすること。
+
+**既知の制約**: 枝の折りたたみ (SP-05-02) は「起点人物の子孫」を隠すのみで、
+隠れた子孫の配偶者 (元々 X の子孫ではなく、その配偶者として表示されていた人物)
+までは連動して隠さない。折りたたむと、隠れた人物の配偶者だけが他と接続されず
+画面上に孤立して残る。RQ-05-02 の要求自体は満たすが、見た目の課題として
+Phase 5/6 で見直す候補。
 
 ディレクトリ構成の全体像は [20_architecture.md](20_architecture.md) の AD-01-02 を参照。

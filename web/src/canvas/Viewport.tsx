@@ -2,11 +2,18 @@ import { useRef, useState, type PointerEvent, type ReactNode, type WheelEvent } 
 import "./Viewport.css";
 
 // SP-05-05: ズーム範囲は 25%〜400%。
-const MIN_ZOOM = 0.25;
-const MAX_ZOOM = 4;
+export const MIN_ZOOM = 0.25;
+export const MAX_ZOOM = 4;
 const ZOOM_STEP = 0.001;
 
 interface ViewportProps {
+  /**
+   * ズーム倍率は親 (App) が状態として持つ制御コンポーネントにする。ノードの
+   * ドラッグ移動 (VerticalNode) が画面ピクセルの移動量を抽象座標へ変換する際、
+   * 現在のズーム倍率を知る必要があるため (scale * zoom で割る)。
+   */
+  zoom: number;
+  onZoomChange: (zoom: number) => void;
   children: ReactNode;
 }
 
@@ -18,20 +25,19 @@ interface DragState {
   originY: number;
 }
 
-export function Viewport({ children }: ViewportProps) {
-  const [zoom, setZoom] = useState(1);
+export function Viewport({ zoom, onZoomChange, children }: ViewportProps) {
   const [pan, setPan] = useState({ x: 40, y: 40 });
   const dragState = useRef<DragState | null>(null);
 
   function handleWheel(event: WheelEvent<HTMLDivElement>) {
     event.preventDefault();
-    setZoom((current) => {
-      const next = current - event.deltaY * ZOOM_STEP;
-      return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next));
-    });
+    const next = zoom - event.deltaY * ZOOM_STEP;
+    onZoomChange(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next)));
   }
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
+    // ノード側 (VerticalNode) がドラッグを処理する場合は stopPropagation
+    // されているため、ここに来るのは背景でのパン操作のみ。
     (event.target as HTMLElement).setPointerCapture(event.pointerId);
     dragState.current = {
       pointerId: event.pointerId,
