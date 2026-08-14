@@ -60,6 +60,10 @@ web/src/
   editing/commandStack.ts  Undo/Redo 用のメメント方式コマンドスタック。ノード移動・
                            枝の折りたたみ・自動レイアウト再実行をすべて
                            Overrides のスナップショット差分として扱う (Phase 4)
+  editing/relations.ts     親子・配偶者・兄弟の関係グラフをベースラインの LayoutResult
+                           から構築する (SP-05-06) (Phase 6)
+  editing/revealAnchors.ts ノード単位で非表示にした人物の再表示ハンドルの位置
+                           (アンカーとなる可視ノードと方向) を計算する (SP-05-06) (Phase 6)
   canvas/TitleDisplay.tsx  標題の縦書き表示。図の全高に合わせ右端に配置 (SP-06-01) (Phase 5)
   canvas/Legend.tsx        故人の凡例。該当者がいる場合のみ表示 (SP-03-09) (Phase 5)
   canvas/layoutConstants.ts UNIT_PX・ピクセルサイズ計算を FamilyTreeCanvas と
@@ -159,6 +163,31 @@ RQ-02-03) への変換は描画層 (`FamilyTreeCanvas.tsx`) の責務。この�
 ロジックを変更する際は、`VerticalNode.tsx` の見た目上のオフセットと
 `connectorGeometry.ts` の補正ロジックを必ず両方同時に見直すこと（片方だけ
 直すと再びこの不具合が再発する）。
+
+**ノード単位の非表示 (SP-05-06) はブランチ折りたたみ (SP-05-02) と同じ `hidden_handles` を共有すること**:
+実装当初、専用のオーバーライドフィールドを新設することも検討したが、
+`hidden_handles: string[]` は元々「非表示にする handle の集合」という一般的な
+意味で設計されていた (`editing/overrides.ts` の `applyOverrides` は特定の
+非表示理由を区別しない) ため、単一ノードの非表示もこの同じ配列に handle を
+1 件追加するだけで実現できる。これにより、婚姻線・親子接続線の連動非表示も
+既存のフィルタリングロジックをそのまま再利用でき、新規実装が不要になった。
+一方で、この共有により「枝を展開」操作 (`handleToggleCollapse`) は、その枝の
+子孫であれば個別非表示ノードも含めてまとめて再表示する（個別非表示という
+区別を保持しない）。これは意図的な単純化であり、「枝を展開したら中身は
+全部見える」という直感に合致するため許容している。
+
+**再表示ハンドルの位置計算は、オーバーライド適用後ではなくベースラインの
+LayoutResult に対して行うこと**:
+非表示ノードは `applyOverrides` によって表示用の `LayoutResult` から完全に
+除去されるため、そこから親子・配偶者・兄弟関係をたどることはできない
+(非表示ノード自身も、非表示ノードを介した先の関係も失われる)。
+`editing/revealAnchors.ts` の `computeRevealAnchors` は必ず `baseLayout`
+(オーバーライド適用前、全ノードを含む) を受け取ること。可視ノードの
+画面上の位置（ハンドルの実際の描画座標）は表示用 `LayoutResult` 側
+(手動移動や生没年列の左右反転を反映済み) から取る必要があるため、
+`FamilyTreeCanvas.tsx` は `connectorGeometry.ts` の `buildVisualNodeIndex`
+を再利用してアンカーの矩形を計算している（接続線の位置計算と同じ理由 —
+上記の「生没年列の左右反転は…」の項を参照）。
 
 **既知の制約 (複数配偶者の婚姻線)**: ある人物が複数の配偶者を持つ場合
 (再婚)、2 人目以降の配偶者との婚姻線は、間に挟まる別の配偶者のボックスの

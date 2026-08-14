@@ -9,6 +9,7 @@ import { TitleDisplay } from "./canvas/TitleDisplay";
 import { Viewport } from "./canvas/Viewport";
 import { CommandStack, makeCommand } from "./editing/commandStack";
 import { applyOverrides, createEmptyOverrides, descendantsOf, type Overrides } from "./editing/overrides";
+import { computeRevealAnchors } from "./editing/revealAnchors";
 import { downloadSvg, serializeChartToSvg } from "./export/exportChart";
 import { DEFAULT_DISPLAY_OPTIONS, type DisplayOptions } from "./types/displayOptions";
 import type { Calendar, LayoutResult } from "./types/layout";
@@ -89,6 +90,11 @@ function App() {
     return result;
   }, [descendantsCache, overrides]);
 
+  const revealAnchors = useMemo(() => {
+    if (!baseLayout) return [];
+    return computeRevealAnchors(baseLayout, new Set(overrides.hidden_handles));
+  }, [baseLayout, overrides.hidden_handles]);
+
   const hasDeceased = useMemo(() => {
     if (!displayLayout) return false;
     return [...displayLayout.nodes, ...displayLayout.auxiliary_nodes].some(
@@ -157,6 +163,22 @@ function App() {
     pushOverridesCommand(isCollapsed ? "枝を展開" : "枝を折りたたむ", {
       ...overrides,
       hidden_handles: nextHidden,
+    });
+  }
+
+  function handleHideNode(handle: string) {
+    if (overrides.hidden_handles.includes(handle)) return;
+    pushOverridesCommand("ノードを非表示", {
+      ...overrides,
+      hidden_handles: [...overrides.hidden_handles, handle],
+    });
+  }
+
+  function handleRevealNodes(handles: string[]) {
+    const toReveal = new Set(handles);
+    pushOverridesCommand("ノードを再表示", {
+      ...overrides,
+      hidden_handles: overrides.hidden_handles.filter((h) => !toReveal.has(h)),
     });
   }
 
@@ -447,6 +469,9 @@ function App() {
                   collapsibleHandles={collapsibleHandles}
                   collapsedHandles={collapsedHandles}
                   onToggleCollapse={handleToggleCollapse}
+                  onHideNode={handleHideNode}
+                  revealAnchors={revealAnchors}
+                  onRevealNodes={handleRevealNodes}
                 />
                 <TitleDisplay
                   text={titleSettings.text}

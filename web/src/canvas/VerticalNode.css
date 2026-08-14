@@ -70,6 +70,30 @@
   cursor: pointer;
 }
 
+.vertical-node__hide-toggle {
+  writing-mode: horizontal-tb;
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--fg-line, #333);
+  background: #fff;
+  color: #555;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.35;
+}
+
+.vertical-node:hover .vertical-node__hide-toggle,
+.vertical-node__hide-toggle:focus-visible {
+  opacity: 1;
+}
+
 .vertical-node__name {
   font-size: 1em;
   line-height: 1.15;

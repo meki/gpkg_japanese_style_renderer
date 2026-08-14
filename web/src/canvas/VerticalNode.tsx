@@ -31,6 +31,9 @@ interface VerticalNodeProps {
   isCollapsible: boolean;
   isCollapsed: boolean;
   onToggleCollapse: (handle: string) => void;
+  /** このノード単体を非表示にする (RQ-05-10)。婚姻線・親子接続線は
+   *  applyOverrides 側で自動的に連動して非表示になる。 */
+  onHideNode: (handle: string) => void;
 }
 
 export function VerticalNode({
@@ -45,6 +48,7 @@ export function VerticalNode({
   isCollapsible,
   isCollapsed,
   onToggleCollapse,
+  onHideNode,
 }: VerticalNodeProps) {
   const { view } = node;
   const classNames = ["vertical-node"];
@@ -147,6 +151,26 @@ export function VerticalNode({
             alt=""
           />
         )}
+        <button
+          type="button"
+          className="vertical-node__hide-toggle"
+          title="このノードを非表示にする"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            onHideNode(node.handle);
+          }}
+        >
+          <svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true">
+            <path
+              d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.3"
+            />
+            <circle cx="8" cy="8" r="2" fill="currentColor" />
+          </svg>
+        </button>
         {isCollapsible && (
           <button
             type="button"
