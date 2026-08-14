@@ -114,7 +114,9 @@
 
 `relation` は `"birth"` | `"adopted"`。`points` は SP-02-04 の 3 セグメント（始点→水平→垂直）を明示的な折れ点列として持ち、描画層でのルーティング再計算を不要にする。`parent_handles` はレイアウト対象に含まれる親の `handle`（両親が対象なら 2 件、単親家庭または一方が対象範囲外なら 1 件）。`MarriageEdge` は両親がそろっている family にしか存在しないため（SP-02-03）、子孫方向の到達可能集合をクライアント側で辿る用途（枝の表示/非表示、SP-05-02）には `MarriageEdge` ではなく本フィールドを使う。
 
-`MarriageEdge.midpoint_x` は夫婦 2 人の中心座標の幾何学的な中点であり、`ChildEdge.points[0]` (子孫方向の始点) の x 座標として使う「論理的な」中点である。**画面に実際に描く婚姻線 (水平線) の両端は、この中点を使わず、描画層 (`web/src/canvas/ConnectorLayer.tsx` の `facingEdges()`) が `PersonNode.x` / `width` から夫婦それぞれの向き合うボックスの端を計算し、その間だけに限定する。** 中心同士を結ぶと線が両方のボックスの内側まで伸び、ボックスが不透明でも見た目上ボックスと重なって見える不具合が実データで見つかったため（人物枠を透明にする設定や、婚入配偶者の枠を半透明にしていた旧実装では線が透けて見えていた）。
+`MarriageEdge.midpoint_x` / `y` および `ChildEdge.points` は、いずれもレイアウト計算時点(自動配置直後、オーバーライド適用前)の「論理的な」座標である。**画面に実際に描く婚姻線・親子接続線は、この静的な座標を使わず、描画層 (`web/src/canvas/connectorGeometry.ts` の `facingEdges()` / `marriageEdgeY()` / `computeChildEdgeGeometry()`、および `ConnectorLayer.tsx`) が現在の `PersonNode.x` / `y` / `width` (オーバーライド適用後、手動移動していればその位置) から毎レンダリング時に再計算する。** 中心同士を結ぶと線が両方のボックスの内側まで伸び、ボックスが不透明でも見た目上ボックスと重なって見える不具合が実データで見つかったため（人物枠を透明にする設定や、婚入配偶者の枠を半透明にしていた旧実装では線が透けて見えていた）。また、手動でのノード位置オーバーライドは `PersonNode.x/y` のみを書き換え、`MarriageEdge`/`ChildEdge` の静的フィールドは追従しないため、婚姻線と同様に親子接続線も動的再計算にしないとドラッグ操作に追従しない（実データ確認で発覚し、両方とも動的再計算に統一した）。
+
+生没年列の左右を入れ替える表示 (`VerticalNode.tsx` の `dateSide`) は `PersonNode.x/width` 自体を変更しない見た目だけの調整のため、`connectorGeometry.ts` は `buildVisualNodeIndex()` で `dateSide==="left"` のノードの `x` を `date_column_width` 分だけ補正してから接続線を計算する。これを怠ると、生没年列が反転している人物のボックスと接続線の間に隙間ができる。
 
 ## TilePage（A4 タイル印刷）
 

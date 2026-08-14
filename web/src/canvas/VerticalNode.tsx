@@ -21,6 +21,12 @@ interface VerticalNodeProps {
    */
   totalWidth: number;
   displayOptions: DisplayOptions;
+  /**
+   * 生没年列をボックスのどちら側 (画面表示) に出すか。婚姻線が接続する側と
+   * 反対側に出すことで、生没年テキストと婚姻線の重なりを避ける
+   * (FamilyTreeCanvas.tsx の computeMarriageSides を参照)。
+   */
+  dateSide: "left" | "right";
   onDragEnd: (handle: string, x: number, y: number) => void;
   isCollapsible: boolean;
   isCollapsed: boolean;
@@ -34,6 +40,7 @@ export function VerticalNode({
   projectId,
   totalWidth,
   displayOptions,
+  dateSide,
   onDragEnd,
   isCollapsible,
   isCollapsed,
@@ -86,7 +93,10 @@ export function VerticalNode({
     }
   }
 
-  const displayLeft = (totalWidth - node.x - node.width) * scale + (dragOffsetPx?.dx ?? 0);
+  // セル (ボックス + 生没年列) 全体の画面左端。婚姻線が右にある人物は
+  // dateSide==="left" となり、セル内でボックスと生没年列の左右を入れ替える
+  // (セル全体の footprint は engine.py 側の計算と変えない)。
+  const cellDisplayLeft = (totalWidth - node.x - node.width) * scale + (dragOffsetPx?.dx ?? 0);
   const displayTop = node.y * scale + (dragOffsetPx?.dy ?? 0);
   const frameWidthPx = node.width * scale;
   const dateColumnWidthPx = node.date_column_width * scale;
@@ -94,13 +104,16 @@ export function VerticalNode({
     displayOptions.showDates &&
     dateColumnWidthPx > 0 &&
     (view.birth_date_display || view.death_date_display);
+  const flipped = dateSide === "left";
+  const boxDisplayLeft = flipped ? cellDisplayLeft + dateColumnWidthPx : cellDisplayLeft;
+  const dateDisplayLeft = flipped ? cellDisplayLeft : cellDisplayLeft + frameWidthPx;
 
   return (
     <>
       <div
         className={classNames.join(" ") + (dragOffsetPx ? " vertical-node--dragging" : "")}
         style={{
-          left: displayLeft,
+          left: boxDisplayLeft,
           top: displayTop,
           width: frameWidthPx,
           height: node.height * scale,
@@ -153,7 +166,7 @@ export function VerticalNode({
         <div
           className="vertical-node__date-column"
           style={{
-            left: displayLeft + frameWidthPx,
+            left: dateDisplayLeft,
             top: displayTop,
             width: dateColumnWidthPx,
           }}

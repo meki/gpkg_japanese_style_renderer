@@ -129,6 +129,37 @@ RQ-02-03) への変換は描画層 (`FamilyTreeCanvas.tsx`) の責務。この�
 `background-color` に直接アルファを持たせるなど、他要素を巻き込まない方法を
 選ぶこと。
 
+**接続線はレイアウト計算時点の静的座標ではなく、現在のノード位置から都度再計算すること**:
+手動でのノード移動 (`editing/overrides.ts` の `node_positions` オーバーライド) は
+`PersonNode.x/y` のみを上書きし、`MarriageEdge`/`ChildEdge` の静的な座標
+フィールド (`midpoint_x`/`y`/`points`) はレイアウト計算時点の値のまま更新されない。
+そのため `ConnectorLayer.tsx` がこれらの静的座標をそのまま描画すると、ノードを
+ドラッグしても婚姻線は追従するが親子接続線だけ古い位置に取り残される、という
+不具合が実データ確認で発覚した (婚姻線は以前の修正で既に動的再計算になって
+いたが、親子接続線は未対応だった)。修正として `canvas/connectorGeometry.ts` に
+`buildNodeIndex`/`facingEdges`/`marriageEdgeY`/`computeChildEdgeGeometry` を
+切り出し、婚姻線・親子接続線の両方を **毎レンダリングごとに現在のノード位置から
+再計算する** 方式に統一した。`MarriageEdge`/`ChildEdge` の静的フィールドは
+初期表示のフォールバック目的以外では信頼しないこと。
+
+**生没年列の左右反転は、接続線側でも同じボックス位置補正が必要**:
+生没年列が婚姻線と重ならないよう `VerticalNode.tsx` はセル内でボックス本体と
+生没年列の左右を入れ替える機能 (`dateSide` prop) を持つが、これは
+「セル (ボックス+生没年列) の左端」から `date_column_width` 分だけボックスを
+画面上ずらす **見た目だけの調整** であり、`PersonNode.x/width` (abstract 座標)
+自体は変化しない。この非対称性に気づかず `connectorGeometry.ts` の婚姻線・
+親子接続線の計算に生の `node.x` を使うと、生没年列が左側に出た人物 (配偶者側)
+のボックスと接続線の間に `date_column_width` 分の隙間ができる不具合を、
+ブラウザでの `getBoundingClientRect()` 突き合わせ検証で発見した (見た目には
+軽微だが `line.left`/`box.right` を厳密に比較して判明)。修正は
+`connectorGeometry.ts` に `buildVisualNodeIndex(layout, marriageSides)` を追加し、
+`dateSide==="left"` のノードは `x` を `x - date_column_width` に補正した
+「実際に画面へ描画される位置」を表すノード集合を作り、`ConnectorLayer.tsx` は
+必ずこの補正済みノード集合を使って接続線を計算すること。生没年列の配置
+ロジックを変更する際は、`VerticalNode.tsx` の見た目上のオフセットと
+`connectorGeometry.ts` の補正ロジックを必ず両方同時に見直すこと（片方だけ
+直すと再びこの不具合が再発する）。
+
 **既知の制約 (複数配偶者の婚姻線)**: ある人物が複数の配偶者を持つ場合
 (再婚)、2 人目以降の配偶者との婚姻線は、間に挟まる別の配偶者のボックスの
 真下 (画面上は背後) を通過する。人物枠が不透明な既定設定では視覚的に隠れて
