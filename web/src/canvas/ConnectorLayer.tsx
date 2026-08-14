@@ -10,8 +10,18 @@ interface ConnectorLayerProps {
   totalWidth: number;
 }
 
-function centerX(node: PersonNode): number {
-  return node.x + node.width / 2;
+/**
+ * 2 つのノードのうち互いに向き合う端 (抽象座標) を返す。
+ *
+ * 婚姻線は中心同士ではなく、実際に隣接するボックスの端同士を結ぶ
+ * (中心同士だと線がボックス内部まで伸び、半透明でなくとも見た目上
+ * ボックスと重なって見えることが実データでの目視確認で判明した)。
+ * abstract x が小さい方が画面上「右」に来る (RQ-02-03) ため、
+ * 小さい方の abstract 右端・大きい方の abstract 左端が向かい合う。
+ */
+function facingEdges(a: PersonNode, b: PersonNode): [number, number] {
+  const [rightSide, leftSide] = a.x <= b.x ? [a, b] : [b, a];
+  return [rightSide.x + rightSide.width, leftSide.x];
 }
 
 export function ConnectorLayer({ layout, scale, width, height, totalWidth }: ConnectorLayerProps) {
@@ -28,13 +38,14 @@ export function ConnectorLayer({ layout, scale, width, height, totalWidth }: Con
         const wife = nodeByHandle.get(edge.wife_handle);
         if (!husband || !wife) return null;
         const y = edge.y * scale;
+        const [edgeA, edgeB] = facingEdges(husband, wife);
         return (
           <line
             key={edge.family_handle}
             className="connector-layer__marriage"
-            x1={mirror(centerX(husband))}
+            x1={mirror(edgeA)}
             y1={y}
-            x2={mirror(centerX(wife))}
+            x2={mirror(edgeB)}
             y2={y}
           />
         );

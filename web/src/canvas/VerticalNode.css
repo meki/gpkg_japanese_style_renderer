@@ -27,7 +27,9 @@
 }
 
 .vertical-node--spouse-in {
-  opacity: 0.92;
+  /* opacity は使わない: 半透明にすると背後の接続線が透けて見えてしまう
+     (実データでの目視確認で発覚)。ボックスは常に不透明に保つ。 */
+  border-color: #888;
 }
 
 .vertical-node--no-frame {
