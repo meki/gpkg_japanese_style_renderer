@@ -4,6 +4,13 @@
 見積もる。抽象座標系における 1 単位は全角文字 1 文字分の字送り (1em 相当) と
 みなす。実際のグリフ幅とは厳密には一致せず、ノードの重なりが生じうるが、
 それは Phase 6 のレイアウト品質改善で吸収する方針とする (ADR-01 参照)。
+
+生没年 (dates) は罫線で囲むノード本体 (frame) の高さには含めない。和暦の
+生没年表記は "明治二十七年八月十二日生" のように長くなりがちで、これを
+frame の高さに含めると名前が短い人物のノードまで不必要に縦長になる
+(実データで確認されたレイアウト崩れ)。生没年は `date_column_width` /
+`date_column_height` として frame とは別に見積もり、描画層 (VerticalNode.tsx)
+が frame の外側 (画面表示では右隣) に独立した列として配置する。
 """
 from __future__ import annotations
 
@@ -40,16 +47,26 @@ def estimate_node_size(view: PersonView, options: DisplayOptions) -> NodeSize:
             dates_chars += len(view.birth_date_display.text)
         if view.death_date_display is not None:
             dates_chars += len(view.death_date_display.text)
-        if dates_chars:
-            side_columns += 1
 
-    text_height = max(name_chars, dates_chars) * CHAR_UNIT
-    text_width = MAIN_COLUMN_WIDTH + side_columns * max(
-        RUBY_COLUMN_WIDTH, LABEL_COLUMN_WIDTH, DATE_COLUMN_WIDTH
-    )
+    text_height = name_chars * CHAR_UNIT
+    text_width = MAIN_COLUMN_WIDTH + side_columns * max(RUBY_COLUMN_WIDTH, LABEL_COLUMN_WIDTH)
 
     has_photo = options.show_photos and view.has_photo
-    height = text_height + (PHOTO_HEIGHT if has_photo else 0.0) + PADDING * 2
-    width = max(text_width, PHOTO_WIDTH if has_photo else 0.0) + PADDING * 2
+    frame_height = max(text_height + (PHOTO_HEIGHT if has_photo else 0.0) + PADDING * 2, MIN_HEIGHT)
+    frame_width = max(
+        max(text_width, PHOTO_WIDTH if has_photo else 0.0) + PADDING * 2, MIN_WIDTH
+    )
 
-    return NodeSize(width=max(width, MIN_WIDTH), height=max(height, MIN_HEIGHT))
+    date_column_width = 0.0
+    date_column_height = 0.0
+    if dates_chars > 0:
+        date_column_width = DATE_COLUMN_WIDTH + PADDING
+        date_column_height = dates_chars * CHAR_UNIT + PADDING * 2
+
+    return NodeSize(
+        width=frame_width + date_column_width,
+        height=frame_height,
+        frame_width=frame_width,
+        date_column_width=date_column_width,
+        date_column_height=date_column_height,
+    )

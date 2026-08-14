@@ -50,6 +50,58 @@ _SPOUSE_WITH_KNOWN_PARENT_XML = """<?xml version="1.0" encoding="UTF-8"?>
 """.encode()
 
 
+# 補助ノードが両親そろって判明しているケース (夫婦連結線も生成されるはず)。
+_SPOUSE_WITH_BOTH_PARENTS_KNOWN_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE database PUBLIC "-//Gramps//DTD Gramps XML 1.7.2//EN"
+"http://gramps-project.org/xml/1.7.2/grampsxml.dtd">
+<database xmlns="http://gramps-project.org/xml/1.7.2/">
+  <header><created date="2026-08-15" version="6.0.8"/><researcher/></header>
+  <people>
+    <person handle="_p0001" id="I0001">
+      <gender>M</gender>
+      <name type="Birth Name"><first>太郎</first><surname>山田</surname></name>
+      <parentin hlink="_f0001"/>
+    </person>
+    <person handle="_p0002" id="I0002">
+      <gender>F</gender>
+      <name type="Birth Name"><first>花子</first><surname>斎藤</surname></name>
+      <childof hlink="_f0002"/>
+      <parentin hlink="_f0001"/>
+    </person>
+    <person handle="_p0003" id="I0003">
+      <gender>M</gender>
+      <name type="Birth Name"><first>次郎</first><surname>山田</surname></name>
+      <childof hlink="_f0001"/>
+    </person>
+    <person handle="_p0004" id="I0004">
+      <gender>M</gender>
+      <name type="Birth Name"><first>源一</first><surname>斎藤</surname></name>
+      <parentin hlink="_f0002"/>
+    </person>
+    <person handle="_p0005" id="I0005">
+      <gender>F</gender>
+      <name type="Birth Name"><first>登美</first><surname>田村</surname></name>
+      <parentin hlink="_f0002"/>
+    </person>
+  </people>
+  <families>
+    <family handle="_f0001" id="F0001">
+      <rel type="Married"/>
+      <father hlink="_p0001"/>
+      <mother hlink="_p0002"/>
+      <childref hlink="_p0003" frel="Birth" mrel="Birth"/>
+    </family>
+    <family handle="_f0002" id="F0002">
+      <rel type="Married"/>
+      <father hlink="_p0004"/>
+      <mother hlink="_p0005"/>
+      <childref hlink="_p0002" frel="Birth" mrel="Birth"/>
+    </family>
+  </families>
+</database>
+""".encode()
+
+
 def _load(minimal_family_xml_bytes: bytes) -> GrampsDatabase:
     return GrampsDatabase.load_xml_bytes(minimal_family_xml_bytes)
 
@@ -177,6 +229,42 @@ class TestEdges:
         assert y1 == y2  # 兄弟バーは水平
         assert x2 == x3  # 子へ向けて垂直に下降
 
+    def test_marriage_edge_y_stays_within_both_spouses_frame(
+        self, minimal_family_xml_bytes: bytes
+    ) -> None:
+        """夫婦連結線の Y 座標が、世代内の他ノードの高さに引きずられて実際の
+        ノードから乖離しないことの回帰テスト。フィクスチャの人物は名前の長さ・
+        旧姓の有無で frame の高さがまちまちであり、単純に「世代で最も高い
+        ノード」基準の Y を使うと外れるケースを含む。
+        """
+        db = _load(minimal_family_xml_bytes)
+        taro = db.people["_p0001"]
+        result = build_layout(db, taro, lineage_surnames=frozenset({"山田"}))
+        by_handle = {n.handle: n for n in result.nodes}
+        assert result.marriage_edges  # フィクスチャに婚姻線が存在すること自体の前提確認
+        for edge in result.marriage_edges:
+            husband = by_handle[edge.husband_handle]
+            wife = by_handle[edge.wife_handle]
+            assert husband.y - 1e-6 <= edge.y <= husband.y + husband.height + 1e-6
+            assert wife.y - 1e-6 <= edge.y <= wife.y + wife.height + 1e-6
+
+    def test_child_edge_start_point_touches_parent_frame(
+        self, minimal_family_xml_bytes: bytes
+    ) -> None:
+        """親子接続線の始点が、実際の親の frame の内側〜下端の範囲にあることの
+        回帰テスト (以前は世代で最も高いノードの下端を使っており、背の低い
+        親の場合に線がボックスから完全に離れてしまっていた)。
+        """
+        db = _load(minimal_family_xml_bytes)
+        taro = db.people["_p0001"]
+        result = build_layout(db, taro, lineage_surnames=frozenset({"山田"}))
+        by_handle = {n.handle: n for n in result.nodes}
+        for edge in result.child_edges:
+            _start_x, start_y = edge.points[0]
+            for parent_handle in edge.parent_handles:
+                parent = by_handle[parent_handle]
+                assert parent.y - 1e-6 <= start_y <= parent.y + parent.height + 1e-6
+
 
 class TestOrdering:
     def test_elder_sibling_has_smaller_x(self, minimal_family_xml_bytes: bytes) -> None:
@@ -214,3 +302,28 @@ class TestAuxiliaryNodes:
         hanako = next(n for n in result.nodes if n.handle == "_p0002")
         # 補助ノードは配偶者の直上に配置される
         assert aux.y < hanako.y
+
+        # 単親のみ判明している場合でも、補助ノードから配偶者への接続線が生成される
+        # (接続線なしでノードだけ浮いて表示される不具合の回帰テスト)
+        aux_edge = next(e for e in result.child_edges if e.child_handle == "_p0002")
+        assert aux_edge.parent_handles == ["_p0004"]
+        assert aux_edge.relation == "birth"
+        assert not any(e.husband_handle == "_p0004" for e in result.marriage_edges)
+
+    def test_spouse_both_known_parents_get_marriage_and_child_edge(self) -> None:
+        db = GrampsDatabase.load_xml_bytes(_SPOUSE_WITH_BOTH_PARENTS_KNOWN_XML)
+        taro = db.people["_p0001"]
+        result = build_layout(db, taro, lineage_surnames=frozenset({"山田"}))
+
+        assert _handles(result) == {"_p0001", "_p0002", "_p0003"}
+        assert {n.handle for n in result.auxiliary_nodes} == {"_p0004", "_p0005"}
+
+        aux_marriage = next(
+            e for e in result.marriage_edges if e.husband_handle == "_p0004"
+        )
+        assert aux_marriage.wife_handle == "_p0005"
+
+        aux_child_edge = next(e for e in result.child_edges if e.child_handle == "_p0002")
+        assert set(aux_child_edge.parent_handles) == {"_p0004", "_p0005"}
+        # 接続線の始点は夫婦連結線の中点と一致する
+        assert aux_child_edge.points[0] == (aux_marriage.midpoint_x, aux_marriage.y)

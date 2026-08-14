@@ -88,67 +88,80 @@ export function VerticalNode({
 
   const displayLeft = (totalWidth - node.x - node.width) * scale + (dragOffsetPx?.dx ?? 0);
   const displayTop = node.y * scale + (dragOffsetPx?.dy ?? 0);
+  const frameWidthPx = node.width * scale;
+  const dateColumnWidthPx = node.date_column_width * scale;
+  const showDates =
+    displayOptions.showDates &&
+    dateColumnWidthPx > 0 &&
+    (view.birth_date_display || view.death_date_display);
 
   return (
-    <div
-      className={classNames.join(" ") + (dragOffsetPx ? " vertical-node--dragging" : "")}
-      style={{
-        left: displayLeft,
-        top: displayTop,
-        width: node.width * scale,
-        height: node.height * scale,
-      }}
-      title={view.notes.join("\n") || undefined}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
-    >
-      <div className="vertical-node__name">
-        {displayOptions.showFormerSurname && view.former_surname && (
-          <span className="vertical-node__former-surname">({view.former_surname})</span>
-        )}
-        <ruby>
-          {view.surname}
-          {displayOptions.showRuby && view.surname_kana && <rt>{view.surname_kana}</rt>}
-        </ruby>
-        <ruby>
-          {view.given_name}
-          {displayOptions.showRuby && view.given_name_kana && <rt>{view.given_name_kana}</rt>}
-        </ruby>
-      </div>
-      <div className="vertical-node__side">
+    <>
+      <div
+        className={classNames.join(" ") + (dragOffsetPx ? " vertical-node--dragging" : "")}
+        style={{
+          left: displayLeft,
+          top: displayTop,
+          width: frameWidthPx,
+          height: node.height * scale,
+        }}
+        title={view.notes.join("\n") || undefined}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+      >
+        <div className="vertical-node__name">
+          {displayOptions.showFormerSurname && view.former_surname && (
+            <span className="vertical-node__former-surname">({view.former_surname})</span>
+          )}
+          <ruby>
+            {view.surname}
+            {displayOptions.showRuby && view.surname_kana && <rt>{view.surname_kana}</rt>}
+          </ruby>
+          <ruby>
+            {view.given_name}
+            {displayOptions.showRuby && view.given_name_kana && <rt>{view.given_name_kana}</rt>}
+          </ruby>
+        </div>
         {displayOptions.showBirthOrder && view.birth_order_label && (
           <span className="vertical-node__label">{view.birth_order_label}</span>
         )}
-        {displayOptions.showDates && view.birth_date_display && (
-          <span className="vertical-node__date">{view.birth_date_display.text}</span>
+        {displayOptions.showPhotos && view.has_photo && (
+          <img
+            className="vertical-node__photo"
+            src={personPhotoUrl(projectId, node.handle)}
+            alt=""
+          />
         )}
-        {displayOptions.showDates && view.death_date_display && (
-          <span className="vertical-node__date">{view.death_date_display.text}</span>
+        {isCollapsible && (
+          <button
+            type="button"
+            className="vertical-node__collapse-toggle"
+            title={isCollapsed ? "枝を展開" : "枝を折りたたむ"}
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleCollapse(node.handle);
+            }}
+          >
+            {isCollapsed ? "+" : "−"}
+          </button>
         )}
       </div>
-      {displayOptions.showPhotos && view.has_photo && (
-        <img
-          className="vertical-node__photo"
-          src={personPhotoUrl(projectId, node.handle)}
-          alt=""
-        />
-      )}
-      {isCollapsible && (
-        <button
-          type="button"
-          className="vertical-node__collapse-toggle"
-          title={isCollapsed ? "枝を展開" : "枝を折りたたむ"}
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={(event) => {
-            event.stopPropagation();
-            onToggleCollapse(node.handle);
+      {showDates && (
+        <div
+          className="vertical-node__date-column"
+          style={{
+            left: displayLeft + frameWidthPx,
+            top: displayTop,
+            width: dateColumnWidthPx,
           }}
         >
-          {isCollapsed ? "+" : "−"}
-        </button>
+          {view.birth_date_display && <span>{view.birth_date_display.text}</span>}
+          {view.death_date_display && <span>{view.death_date_display.text}</span>}
+        </div>
       )}
-    </div>
+    </>
   );
 }

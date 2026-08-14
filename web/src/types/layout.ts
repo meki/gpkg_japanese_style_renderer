@@ -33,8 +33,14 @@ export interface PersonNode {
   order_in_generation: number;
   x: number;
   y: number;
+  /** 罫線ボックス (frame) の幅。生没年表記の幅は含まない。 */
   width: number;
   height: number;
+  /**
+   * 生没年表記のために frame の外側 (画面表示では frame の右隣) に確保する
+   * 列の幅。0 なら生没年を表示しない。
+   */
+  date_column_width: number;
   view: PersonView;
 }
 
