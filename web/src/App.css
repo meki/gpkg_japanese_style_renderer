@@ -63,7 +63,22 @@
   display: none;
 }
 
+.app__title-input {
+  width: 10em;
+}
+
+.app__title-size-input {
+  width: 4em;
+}
+
+.app__chart-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
+
 .app__canvas-area {
+  position: relative;
   flex: 1;
   min-height: 0;
 }

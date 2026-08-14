@@ -1,11 +1,8 @@
 import type { LayoutResult } from "../types/layout";
 import { DEFAULT_DISPLAY_OPTIONS, type DisplayOptions } from "../types/displayOptions";
 import { ConnectorLayer } from "./ConnectorLayer";
+import { computePixelSize, UNIT_PX } from "./layoutConstants";
 import { VerticalNode } from "./VerticalNode";
-
-// 抽象座標系の 1 単位あたりの px 数。ADR-01: フォント実測ではなく文字数ベースの
-// 近似のため、正確なグリフ幅との厳密な一致は期待しない (Phase 6 で調整)。
-const UNIT_PX = 32;
 
 interface FamilyTreeCanvasProps {
   layout: LayoutResult;
@@ -30,9 +27,7 @@ export function FamilyTreeCanvas({
 }: FamilyTreeCanvasProps) {
   const allNodes = [...layout.nodes, ...layout.auxiliary_nodes];
   const maxX = Math.max(0, ...allNodes.map((n) => n.x + n.width));
-  const maxY = Math.max(0, ...allNodes.map((n) => n.y + n.height));
-  const pixelWidth = maxX * UNIT_PX;
-  const pixelHeight = maxY * UNIT_PX;
+  const { width: pixelWidth, height: pixelHeight } = computePixelSize(layout);
 
   return (
     <div

@@ -30,6 +30,15 @@
   opacity: 0.92;
 }
 
+.vertical-node--no-frame {
+  border-color: transparent;
+  background: transparent;
+}
+
+.vertical-node--no-frame.vertical-node--deceased {
+  border-color: transparent;
+}
+
 .vertical-node {
   cursor: grab;
   touch-action: none;

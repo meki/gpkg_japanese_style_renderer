@@ -44,6 +44,7 @@ export function VerticalNode({
   if (view.is_deceased) classNames.push("vertical-node--deceased");
   if (view.is_focus_person) classNames.push("vertical-node--focus");
   if (view.is_spouse_in) classNames.push("vertical-node--spouse-in");
+  if (!displayOptions.showFrame) classNames.push("vertical-node--no-frame");
 
   const [dragOffsetPx, setDragOffsetPx] = useState<DragOffsetPx | null>(null);
   const dragStart = useRef<{ clientX: number; clientY: number } | null>(null);

@@ -9,6 +9,8 @@ export interface DisplayOptions {
   showDates: boolean;
   showPhotos: boolean;
   showFormerSurname: boolean;
+  /** 人物枠の有無 (SP-03-08)。 */
+  showFrame: boolean;
 }
 
 export const DEFAULT_DISPLAY_OPTIONS: DisplayOptions = {
@@ -17,4 +19,5 @@ export const DEFAULT_DISPLAY_OPTIONS: DisplayOptions = {
   showDates: true,
   showPhotos: true,
   showFormerSurname: true,
+  showFrame: true,
 };

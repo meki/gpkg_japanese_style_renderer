@@ -1,6 +1,17 @@
 :root {
   color-scheme: light;
   font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+
+  /* 意匠のスタイルトークン (SP-06-02, SP-06-03, DF-03-02)。canvas/*.css から参照する。 */
+  --font-title: "Yuji Syuku", serif;
+  --font-body-mincho: "Shippori Mincho", serif;
+  --font-body-kaisho: "Klee One", serif;
+  --font-body: var(--font-body-mincho);
+
+  --bg-canvas: #f5f2ea;
+  --bg-node: #fffdf7;
+  --fg-line: #333;
+  --fg-focus: #b5321a;
 }
 
 * {

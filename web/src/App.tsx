@@ -3,17 +3,27 @@ import "./App.css";
 import { ApiError, getLayout, listPeople, uploadProject } from "./api/client";
 import type { PersonSummary, ProjectSummary } from "./api/client";
 import { FamilyTreeCanvas } from "./canvas/FamilyTreeCanvas";
+import { computePixelSize } from "./canvas/layoutConstants";
+import { Legend } from "./canvas/Legend";
+import { TitleDisplay } from "./canvas/TitleDisplay";
 import { Viewport } from "./canvas/Viewport";
 import { CommandStack, makeCommand } from "./editing/commandStack";
 import { applyOverrides, createEmptyOverrides, descendantsOf, type Overrides } from "./editing/overrides";
 import { DEFAULT_DISPLAY_OPTIONS, type DisplayOptions } from "./types/displayOptions";
 import type { Calendar, LayoutResult } from "./types/layout";
 
-// SP-05-04 のプロジェクト保存形式 (ProjectDocument, DF-03-01) を Phase 4 の
-// 実装範囲に合わせて簡略化したもの。title_settings/style_settings/
-// focus_person_handle 等の意匠系フィールドは Phase 5 で追加する。永続化は
-// サーバを介さず、ブラウザのファイル保存/読込ダイアログのみで完結させる
-// (SP-05-04: 元データを書き換えない)。
+// SP-06-01: 標題の文言・大きさ。位置は右端固定、書体は --font-title 固定
+// (書体選択 UI は将来追加)。
+interface TitleSettings {
+  text: string;
+  fontSize: number;
+}
+
+const DEFAULT_TITLE_SETTINGS: TitleSettings = { text: "", fontSize: 28 };
+
+// SP-05-04 のプロジェクト保存形式 (ProjectDocument, DF-03-01) を実装範囲に
+// 合わせて簡略化したもの。永続化はサーバを介さず、ブラウザのファイル保存/
+// 読込ダイアログのみで完結させる (SP-05-04: 元データを書き換えない)。
 interface ProjectDocumentV1 {
   format_version: 1;
   source_gpkg_filename: string;
@@ -21,6 +31,7 @@ interface ProjectDocumentV1 {
   calendar: Calendar;
   overrides: Overrides;
   display_options: DisplayOptions;
+  title_settings?: TitleSettings;
 }
 
 function App() {
@@ -31,6 +42,7 @@ function App() {
   const [baseLayout, setBaseLayout] = useState<LayoutResult | null>(null);
   const [overrides, setOverrides] = useState<Overrides>(createEmptyOverrides());
   const [displayOptions, setDisplayOptions] = useState<DisplayOptions>(DEFAULT_DISPLAY_OPTIONS);
+  const [titleSettings, setTitleSettings] = useState<TitleSettings>(DEFAULT_TITLE_SETTINGS);
   const [zoom, setZoom] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -74,6 +86,18 @@ function App() {
     }
     return result;
   }, [descendantsCache, overrides]);
+
+  const hasDeceased = useMemo(() => {
+    if (!displayLayout) return false;
+    return [...displayLayout.nodes, ...displayLayout.auxiliary_nodes].some(
+      (n) => n.view.is_deceased,
+    );
+  }, [displayLayout]);
+
+  const titleHeightPx = useMemo(
+    () => (displayLayout ? computePixelSize(displayLayout).height : 0),
+    [displayLayout],
+  );
 
   function pushOverridesCommand(label: string, next: Overrides) {
     commandStackRef.current.push(makeCommand(label, overrides, next));
@@ -202,6 +226,7 @@ function App() {
       calendar,
       overrides,
       display_options: displayOptions,
+      title_settings: titleSettings,
     };
     const blob = new Blob([JSON.stringify(doc, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -231,6 +256,7 @@ function App() {
       setCalendar(cal);
       setOverrides(doc.overrides ?? createEmptyOverrides());
       setDisplayOptions(doc.display_options ?? DEFAULT_DISPLAY_OPTIONS);
+      setTitleSettings(doc.title_settings ?? DEFAULT_TITLE_SETTINGS);
       commandStackRef.current.clear();
       setStackVersion((v) => v + 1);
     } catch (err) {
@@ -334,6 +360,43 @@ function App() {
             />
             旧姓
           </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={displayOptions.showFrame}
+              onChange={() => toggleDisplayOption("showFrame")}
+            />
+            人物枠
+          </label>
+          <span className="app__edit-bar-separator" />
+          <label>
+            標題:
+            <input
+              type="text"
+              className="app__title-input"
+              value={titleSettings.text}
+              onChange={(event) =>
+                setTitleSettings((current) => ({ ...current, text: event.target.value }))
+              }
+              placeholder="例: 山田家系図"
+            />
+          </label>
+          <label>
+            大きさ:
+            <input
+              type="number"
+              className="app__title-size-input"
+              min={12}
+              max={72}
+              value={titleSettings.fontSize}
+              onChange={(event) =>
+                setTitleSettings((current) => ({
+                  ...current,
+                  fontSize: Number(event.target.value) || DEFAULT_TITLE_SETTINGS.fontSize,
+                }))
+              }
+            />
+          </label>
           <span className="app__edit-bar-separator" />
           <button type="button" onClick={handleSaveDocument}>
             保存
@@ -353,18 +416,28 @@ function App() {
 
       <main className="app__canvas-area">
         {displayLayout && project ? (
-          <Viewport zoom={zoom} onZoomChange={setZoom}>
-            <FamilyTreeCanvas
-              layout={displayLayout}
-              projectId={project.project_id}
-              zoom={zoom}
-              displayOptions={displayOptions}
-              onNodeDragEnd={handleNodeDragEnd}
-              collapsibleHandles={collapsibleHandles}
-              collapsedHandles={collapsedHandles}
-              onToggleCollapse={handleToggleCollapse}
-            />
-          </Viewport>
+          <>
+            <Viewport zoom={zoom} onZoomChange={setZoom}>
+              <div className="app__chart-row">
+                <FamilyTreeCanvas
+                  layout={displayLayout}
+                  projectId={project.project_id}
+                  zoom={zoom}
+                  displayOptions={displayOptions}
+                  onNodeDragEnd={handleNodeDragEnd}
+                  collapsibleHandles={collapsibleHandles}
+                  collapsedHandles={collapsedHandles}
+                  onToggleCollapse={handleToggleCollapse}
+                />
+                <TitleDisplay
+                  text={titleSettings.text}
+                  heightPx={titleHeightPx}
+                  fontSize={titleSettings.fontSize}
+                />
+              </div>
+            </Viewport>
+            <Legend hasDeceased={hasDeceased} />
+          </>
         ) : (
           <div className="app__placeholder">
             {project ? "起点人物を選択してください" : ".gpkg ファイルを開いてください"}

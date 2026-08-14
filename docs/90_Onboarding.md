@@ -60,7 +60,17 @@ web/src/
   editing/commandStack.ts  Undo/Redo 用のメメント方式コマンドスタック。ノード移動・
                            枝の折りたたみ・自動レイアウト再実行をすべて
                            Overrides のスナップショット差分として扱う (Phase 4)
+  canvas/TitleDisplay.tsx  標題の縦書き表示。図の全高に合わせ右端に配置 (SP-06-01) (Phase 5)
+  canvas/Legend.tsx        故人の凡例。該当者がいる場合のみ表示 (SP-03-09) (Phase 5)
+  canvas/layoutConstants.ts UNIT_PX・ピクセルサイズ計算を FamilyTreeCanvas と
+                           App (標題の高さ算出に使う) で共有するための切り出し (Phase 5)
 ```
+
+意匠用フォント (SP-06-02) は `@fontsource/yuji-syuku` (標題)・
+`@fontsource/shippori-mincho` (本文・明朝体)・`@fontsource/klee-one`
+(本文・楷書体寄り) を `main.tsx` で日本語サブセットのみ import し、
+CDN を使わず自己ホストする (RQ-08-01)。書体は `index.css` の
+`--font-title` / `--font-body-*` カスタムプロパティで参照する。
 
 `web/src/App.tsx` がこれらを結線する: `baseLayout` (サーバから取得したベースライン) +
 `overrides` (state) を `applyOverrides` で合成して描画し、編集操作は
