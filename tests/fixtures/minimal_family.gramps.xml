@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE database PUBLIC "-//Gramps//DTD Gramps XML 1.7.2//EN"
+"http://gramps-project.org/xml/1.7.2/grampsxml.dtd">
+<database xmlns="http://gramps-project.org/xml/1.7.2/">
+  <header>
+    <created date="2026-08-15" version="6.0.8"/>
+    <researcher/>
+  </header>
+
+  <!--
+    合成テストフィクスチャ。実データ (山田家系図.gpkg) の解析で確認された下記のエッジケースを
+    最小構成で再現する (tests/gramps/test_gpkg_reader.py から参照):
+
+    - 養子縁組 (frel/mrel="Adopted") と旧姓の併記 (name type="Also Known As" alt="1")
+    - 再婚 (person が複数の parentin を持つ)
+    - rel_type が省略された family (<rel> 要素なし)
+    - 日付の欠損パターン: 年月日すべて判明 / 年のみ判明 / 年不明・月日判明 (????-MM-DD) /
+      about 修飾 / before 修飾 + quality="estimated" / datestr (自由文字列) / daterange
+    - 続柄・カナ・血液型の attribute
+    - 名前不明・関係なしの孤立した person
+    - note と object (メディア参照) の紐付け
+    - 1家族に複数の子 (兄弟順序のテスト用)
+  -->
+
+  <events>
+    <event handle="_e0001" id="E0001">
+      <type>Birth</type>
+      <dateval val="1850-03-05"/>
+    </event>
+    <event handle="_e0002" id="E0002">
+      <type>Death</type>
+      <dateval val="1920" type="before" quality="estimated"/>
+    </event>
+    <event handle="_e0003" id="E0003">
+      <type>Birth</type>
+      <dateval val="1855" type="about"/>
+    </event>
+    <event handle="_e0004" id="E0004">
+      <type>Birth</type>
+      <dateval val="1875-06-01"/>
+    </event>
+    <event handle="_e0005" id="E0005">
+      <type>Birth</type>
+      <dateval val="1878"/>
+    </event>
+    <event handle="_e0006" id="E0006">
+      <type>Birth</type>
+      <dateval val="????-04-08"/>
+    </event>
+    <event handle="_e0007" id="E0007">
+      <type>Birth</type>
+      <dateval val="1901-01-01"/>
+    </event>
+    <event handle="_e0008" id="E0008">
+      <type>Birth</type>
+      <datestr val="幕末生まれ、詳細不明"/>
+    </event>
+    <event handle="_e0009" id="E0009">
+      <type>Birth</type>
+      <daterange start="1903" stop="1905"/>
+    </event>
+    <event handle="_e0010" id="E0010">
+      <type>Birth</type>
+      <dateval val="1903-05-20"/>
+    </event>
+  </events>
+
+  <people>
+    <person handle="_p0001" id="I0001">
+      <gender>M</gender>
+      <name type="Birth Name">
+        <first>太郎</first>
+        <surname>山田</surname>
+      </name>
+      <eventref hlink="_e0001" role="Primary"/>
+      <eventref hlink="_e0002" role="Primary"/>
+      <parentin hlink="_f0001"/>
+    </person>
+
+    <person handle="_p0002" id="I0002">
+      <gender>F</gender>
+      <name type="Birth Name">
+        <first>花子</first>
+        <surname>斎藤</surname>
+      </name>
+      <eventref hlink="_e0003" role="Primary"/>
+      <parentin hlink="_f0001"/>
+    </person>
+
+    <person handle="_p0003" id="I0003">
+      <gender>M</gender>
+      <name type="Birth Name">
+        <first>次郎</first>
+        <surname>山田</surname>
+      </name>
+      <eventref hlink="_e0004" role="Primary"/>
+      <attribute type="続柄" value="長男"/>
+      <attribute type="姓(カナ)" value="やまだ"/>
+      <attribute type="名(カナ)" value="じろう"/>
+      <childof hlink="_f0001"/>
+      <parentin hlink="_f0002"/>
+      <parentin hlink="_f0003"/>
+    </person>
+
+    <person handle="_p0004" id="I0004">
+      <gender>M</gender>
+      <name type="Birth Name">
+        <first>三郎</first>
+        <surname>山田</surname>
+      </name>
+      <name alt="1" type="Also Known As">
+        <first>三郎</first>
+        <surname>鈴木</surname>
+      </name>
+      <eventref hlink="_e0005" role="Primary"/>
+      <objref hlink="_o0001"/>
+      <attribute type="続柄" value="次男"/>
+      <childof hlink="_f0001"/>
+      <noteref hlink="_n0001"/>
+    </person>
+
+    <person handle="_p0005" id="I0005">
+      <gender>F</gender>
+      <name type="Birth Name">
+        <first>咲</first>
+        <surname>田中</surname>
+      </name>
+      <eventref hlink="_e0006" role="Primary"/>
+      <parentin hlink="_f0002"/>
+    </person>
+
+    <person handle="_p0006" id="I0006">
+      <gender>M</gender>
+      <name type="Birth Name">
+        <first>四郎</first>
+        <surname>山田</surname>
+      </name>
+      <eventref hlink="_e0007" role="Primary"/>
+      <attribute type="続柄" value="長男"/>
+      <childof hlink="_f0002"/>
+    </person>
+
+    <person handle="_p0007" id="I0007">
+      <gender>F</gender>
+      <name type="Birth Name">
+        <first>梅</first>
+        <surname>佐藤</surname>
+      </name>
+      <eventref hlink="_e0008" role="Primary"/>
+      <attribute type="血液型" value="A型"/>
+      <parentin hlink="_f0003"/>
+    </person>
+
+    <person handle="_p0008" id="I0008">
+      <gender>F</gender>
+      <name type="Birth Name">
+        <first>五子</first>
+        <surname>山田</surname>
+      </name>
+      <eventref hlink="_e0009" role="Primary"/>
+      <attribute type="続柄" value="長女"/>
+      <childof hlink="_f0003"/>
+    </person>
+
+    <person handle="_p0009" id="I0009">
+    </person>
+
+    <person handle="_p0010" id="I0010">
+      <gender>M</gender>
+      <name type="Birth Name">
+        <first>六郎</first>
+        <surname>山田</surname>
+      </name>
+      <eventref hlink="_e0010" role="Primary"/>
+      <attribute type="続柄" value="次男"/>
+      <childof hlink="_f0002"/>
+    </person>
+  </people>
+
+  <families>
+    <family handle="_f0001" id="F0001">
+      <rel type="Married"/>
+      <father hlink="_p0001"/>
+      <mother hlink="_p0002"/>
+      <childref hlink="_p0003" frel="Birth" mrel="Birth"/>
+      <childref hlink="_p0004" frel="Adopted" mrel="Adopted"/>
+    </family>
+
+    <family handle="_f0002" id="F0002">
+      <rel type="Married"/>
+      <father hlink="_p0003"/>
+      <mother hlink="_p0005"/>
+      <childref hlink="_p0006" frel="Birth" mrel="Birth"/>
+      <childref hlink="_p0010" frel="Birth" mrel="Birth"/>
+    </family>
+
+    <family handle="_f0003" id="F0003">
+      <father hlink="_p0003"/>
+      <mother hlink="_p0007"/>
+      <childref hlink="_p0008" frel="Birth" mrel="Birth"/>
+    </family>
+  </families>
+
+  <objects>
+    <object handle="_o0001" id="O0001">
+      <file src="GrampsMedia/I0004.jpg" mime="image/jpeg" description="山田三郎の写真"/>
+    </object>
+  </objects>
+
+  <notes>
+    <note handle="_n0001" id="N0001" type="Person Note">
+      <text>実父 鈴木源蔵</text>
+    </note>
+  </notes>
+</database>

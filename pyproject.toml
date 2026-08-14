@@ -1,12 +1,57 @@
 [project]
-name = "template-project"
+name = "gpkg-jsr"
 version = "0.1.0"
-description = "Add your description here"
+description = "Gramps .gpkg エクスポートを日本の家系図様式でレンダリングするローカル Web アプリ"
 readme = "README.md"
-requires-python = ">=3.14"
-dependencies = []
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "pydantic>=2.9",
+    "uvicorn[standard]>=0.32",
+]
 
 [dependency-groups]
 dev = [
+    "mypy>=1.13",
+    "pytest>=8.3",
+    "ruff>=0.7",
     "strictdoc>=0.24.0",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gpkg_jsr"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+# gpkg_reader.py は元 src/gpkg_reader.py を無変更で移設したもの (Phase 0)。
+# 新規コードには通常どおり全ルールを適用する。
+[tool.ruff.lint.per-file-ignores]
+"src/gpkg_jsr/gramps/gpkg_reader.py" = ["UP045", "UP037", "E501"]
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "src"
+packages = ["gpkg_jsr"]
+strict = true
+
+# gpkg_reader.py は元 src/gpkg_reader.py を無変更で移設したもの (Phase 0)。
+# 新規コードには通常どおり strict を適用する。
+[[tool.mypy.overrides]]
+module = "gpkg_jsr.gramps.gpkg_reader"
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_any_generics = false
+warn_return_any = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

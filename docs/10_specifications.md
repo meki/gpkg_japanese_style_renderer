@@ -1,0 +1,534 @@
+# gpkg Japanese Style Renderer 仕様書
+
+本書は [00_requirements.md](00_requirements.md) の各要件 (`RQ-`) を実現するための機能仕様・非機能仕様を `SP-` として定義する。API 詳細は [11_specifications-APIs.md](11_specifications-APIs.md)、データ形式は [12_specifications-data_format.md](12_specifications-data_format.md)、UI 横断規約は [13_user_interface_requirements.md](13_user_interface_requirements.md) を参照。実装方針の背景は [20_architecture.md](20_architecture.md) の ADR を参照。
+
+---
+
+## 1. データ取り込み
+
+### 既存 gpkg リーダーの再利用
+
+**UID**: SP-01-01 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-01-01
+
+`src/gpkg_jsr/gramps/gpkg_reader.py`（現 `src/gpkg_reader.py` を移設したもの）の `GrampsDatabase.load()` / `load_xml_bytes()` をそのまま利用する。二段階 gzip 解凍・XML 名前空間非依存のローカル名解決は実装済みのため再実装しない。
+
+### 関係グラフの構築
+
+**UID**: SP-01-02 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-01-02
+
+`person.handle` / `family.handle` を頂点キーとする隣接リストで DAG を構築する。辺は「family → father/mother（親方向）」「family → childref（子方向）」の 2 種。走査は深さ優先とし、`visited: set[str]` で同一 handle の再訪問を検出したら打ち切る（実データに閉路は存在しない前提だが、防御的に実装する）。
+
+### 実子・養子の判定
+
+**UID**: SP-01-03 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-01-03
+
+`Family.children` (`ChildRef`) の `frel` / `mrel` をそのまま線種決定に用いる。値が `Adopted` のとき養子表現 (SP-02-06) を適用し、それ以外 (`Birth` を含む既定値) は実子表現とする。
+
+### 独自属性のマッピング
+
+**UID**: SP-01-04 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-01-06
+
+`Person.get_attribute(type)` を用いて以下の固定マッピングテーブルで `PersonView` のフィールドへ変換する。テーブルにない `type` は無視する（将来の属性追加に備え、未知の属性で処理を中断しない）。
+
+| 属性 `type` | `PersonView` フィールド |
+|---|---|
+| `続柄` | `birth_order_label` |
+| `姓(カナ)` | `surname_kana` |
+| `名(カナ)` | `given_name_kana` |
+| `血液型` | `blood_type` |
+
+### 旧姓の取り込み
+
+**UID**: SP-01-05 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-01-07
+
+`Person.names` のうち `type == "Also Known As" and is_alt` を旧姓候補として抽出し、先頭の 1 件を `PersonView.former_surname` とする。複数存在する場合は最初のものを採用し、残りは注記扱いとしない（将来拡張時に全件保持できるよう、中間表現ではリストのまま保持する）。
+
+### 欠損データのモデル表現
+
+**UID**: SP-01-06 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-01-09
+
+不明な値はすべて `Optional` 型（`None`）で表現し、表示直前の変換層でのみ代替テキスト（例:「生年月日不詳」）へ変換する。ドメインモデル層・レイアウト層は `None` を許容する形で実装し、便宜的なプレースホルダ文字列を早期に埋め込まない。
+
+---
+
+## 2. 組版・レイアウト計算
+
+### 世代の割り当て
+
+**UID**: SP-02-01 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-02-02
+
+指定された起点人物集合（既定は `GrampsDatabase.roots()`）から `children()` を辿る幅優先探索で各人物に世代番号を割り当てる。同一人物が複数経路で到達される場合は **最小の世代番号** を採用する（婚入配偶者が別経路で祖先側にも現れるケースを想定）。
+
+### 兄弟の順序付け
+
+**UID**: SP-02-02 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-02-03
+
+`GrampsDatabase.children()` が返す生年昇順のリストを反転し、右から左へ年長者を配置する。生年不明者は同メソッドの仕様どおり末尾（＝左端）に置かれる。
+
+### 夫婦ユニットの合成
+
+**UID**: SP-02-03 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-02-04
+
+`family.father_handle` / `family.mother_handle` のうち家系姓側 (SP-03-02 で判定) を右、他方を左に配置した 1 レイアウトユニットとして扱う。父母のいずれかが欠けている家族は単独ノードとして配置し、連結線は描画しない。
+
+### 直交折れ線ルーティング
+
+**UID**: SP-02-04 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-02-05
+
+夫婦連結線の中点を子孫方向の始点とし、(1) 始点から一定オフセット下降 → (2) 兄弟バーの y 座標まで水平移動 → (3) 各子の x 座標まで垂直下降、の 3 セグメントで表現する。片親のみの家族は、その親ノード自身の x 座標を始点とする。
+
+### 養子の線種表現
+
+**UID**: SP-02-05 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-02-06
+- **Type**: Parent
+  **ID**: RQ-01-03
+
+SP-02-04 の接続線のうち、対象の子への `frel`/`mrel` が `Adopted` の区間のみ破線スタイルを適用する。父母で実子/養子が異なる場合（片方のみ養子縁組）は、当該親から子への垂直区間のみ破線とし、共通区間（水平の兄弟バー等）は実線のままとする。
+
+### 婚入配偶者の実家併記
+
+**UID**: SP-02-06 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-02-07
+
+婚入配偶者の `childof` が解決可能かつ配偶者自身が世代割当の起点（ルート）である場合、その親ノードを婚入配偶者の直上に縮小表示する補助レイアウトユニットとして配置する。補助ユニットは通常の世代グリッドの外側に置き、他ノードとの重なり回避の対象には含めない（Phase 6 で見直す）。
+
+### レイアウト方向の切替
+
+**UID**: SP-02-07 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-02-08
+
+`LayoutResult` は方向非依存の抽象座標（世代軸・並び順軸）で保持し、画面表示直前に方向設定（縦書き = 世代軸を y、横書き = 世代軸を x）に応じた実座標へ変換する。レイアウト計算自体を方向ごとに作り分けない。
+
+---
+
+## 3. 人物ノードの表示要素
+
+### PersonView の構成
+
+**UID**: SP-03-01 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-03-01
+
+`PersonView` は氏名・ルビ・続柄・旧姓・生没年（西暦/和暦両方を保持し表示側で選択）・写真有無・故人フラグ・注記一覧・基準人物フラグを持つ、表示専用の正規化済みデータ構造とする。詳細スキーマは [12_specifications-data_format.md](12_specifications-data_format.md) を参照。
+
+### 家系姓の判定と姓の省略
+
+**UID**: SP-03-02 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-03-02
+
+図全体で最も出現頻度の高い姓（複数指定可）を「家系姓」とみなす。人物の姓が家系姓に含まれない場合、婚入配偶者とみなし、設定が有効なら名のみを表示する。家系姓の自動推定結果は利用者が上書きできる。
+
+### 旧姓の併記
+
+**UID**: SP-03-03 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-03-03
+
+`PersonView.former_surname` が存在する場合、現姓の直前に小さく併記する。
+
+### ふりがなのルビ化
+
+**UID**: SP-03-04 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-03-04
+
+`surname_kana` / `given_name_kana` を、対応する漢字表記に対する `<ruby>` の `<rt>` として割り当てる。カナが欠けている文字単位には空の `<rt>` を出さず、氏名全体としてルビ無し表示にフォールバックする（部分的な文字単位ルビ割り当ては行わない）。
+
+### 続柄ラベルの配置
+
+**UID**: SP-03-05 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-03-05
+
+`birth_order_label` を氏名の右肩（縦書き時）に小書きで配置する。
+
+### 生没年の表記結合
+
+**UID**: SP-03-06 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-03-06
+- **Type**: Parent
+  **ID**: RQ-04-01
+
+生年は「生」、没年は「没」の接尾辞を付けて表示する。両方判明していれば生年・没年を並べ、没年のみ不明な場合は生年のみ表示する（存命可能性を断定しない）。暦の選択 (SP-04) に従いフォーマットを切り替える。
+
+### 顔写真の表示
+
+**UID**: SP-03-07 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-03-07
+
+`GrampsDatabase.photo_bytes()` で取得したバイト列を `GET /media/{handle}` 経由で遅延取得し、ノード下部に固定アスペクト比でトリミング表示する。写真が無い人物は空白のプレースホルダを表示せず、ノード高から写真領域を除く。
+
+### 人物枠
+
+**UID**: SP-03-08 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-03-08
+
+罫線の有無はスタイル設定の真偽値 1 つで図全体に適用する。人物ごとの個別指定は当面サポートしない。
+
+### 故人の表現と凡例
+
+**UID**: SP-03-09 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-03-09
+
+`is_deceased` が真の人物ノードに対し、枠を二重線または塗りつぶし角（設定で選択）で区別する。凡例テキストと記号のペアを図の隅に自動配置する。凡例は該当者が 1 名以上存在する場合のみ描画する。
+
+### 注記の表示
+
+**UID**: SP-03-10 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-03-10
+
+`notes_for(person)` の全文をノードに付随する注記領域へ表示する。複数件ある場合は改行で連結する。長文はノード拡大時のみ全文表示し、既定は先頭一定文字数で省略する。
+
+### 基準人物の強調
+
+**UID**: SP-03-11 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-03-11
+
+利用者が選択した 1 名の `handle` をプロジェクト設定に保持し、該当ノードに強調スタイル（枠色・記号）を適用する。
+
+### 表示項目トグル
+
+**UID**: SP-03-12 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-03-12
+
+ルビ・続柄・生没年・写真・注記・旧姓それぞれについて、図全体の表示可否を持つスタイル設定を用意する。個々のトグルは `PersonView` のフィールド生成には影響せず、描画層でのみ出し分ける（設定変更のたびにレイアウト再計算を要さない）。
+
+---
+
+## 4. 暦表示
+
+### 元号テーブル
+
+**UID**: SP-04-01 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-04-03
+
+天保 (1830-12-10 改元) 以降、令和までの元号を `(元号名, 開始日, 終了日)` のテーブルとして `format/wareki.py` に定義する。終了日は次の元号の開始日前日、現行元号は `None`（無期限）とする。
+
+### 和暦変換と改元境界判定
+
+**UID**: SP-04-02 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-04-01
+- **Type**: Parent
+  **ID**: RQ-04-04
+
+`GDate` の年月日（グレゴリオ暦とみなせる場合）をテーブル線形走査で元号・元号年に変換する。改元日当日は新元号として扱う。月・日が不明な `GDate` は年のみで元号変換し、月日部分は表示しない。
+
+### 漢数字表記
+
+**UID**: SP-04-03 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-04-02
+
+`format/kanji_number.py` は 0〜99 程度の整数を位取りなしの漢数字（例: 27 → 二十七）に変換する。元号年が「元年」（1 年）の場合は「元年」と表記し「一年」としない。
+
+### 明治 6 年以前の日付表示
+
+**UID**: SP-04-04 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-04-05
+
+グレゴリオ暦への切替日 (1873-01-01) より前の日付は、和暦表示モードであっても **月日を表示せず元号年までに留める**。ツールチップまたは注記に「旧暦の可能性あり」の注記を付す。西暦表示モードでは `GDate.format_ja()` の出力をそのまま用いる（変更しない）。[ADR-03](20_architecture.md) を参照。
+
+### 不明・概算日付の表記
+
+**UID**: SP-04-05 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-04-06
+
+`GDate.modifier`（`about`/`before`/`after`）・`kind`（`daterange`/`datespan`/`datestr`）を和暦表示でも西暦表示 (`GDate.format_ja()`) と同等の修飾語で反映する。和暦変換不能な `datestr` はそのまま原文を表示する。
+
+### 西暦・和暦の併記
+
+**UID**: SP-04-06 \
+**STATUS**: Draft \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-04-07
+
+発展的機能。両暦の文字列を括弧書きで連結する形を想定するが、詳細仕様は実装時に確定する。
+
+---
+
+## 5. 表示範囲とレイアウト編集
+
+### 到達可能集合の計算
+
+**UID**: SP-05-01 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-05-02
+- **Type**: Parent
+  **ID**: RQ-05-03
+
+起点人物から子孫方向 (`children()`) または祖先方向 (`parents()`) への到達可能集合を BFS で求め、それ以外の人物・家族を `LayoutResult` の生成対象から除外する。両方向を同時に指定した場合は集合の和集合を用いる。
+
+### オーバーライドレイヤー
+
+**UID**: SP-05-02 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-05-05
+- **Type**: Parent
+  **ID**: RQ-05-07
+
+自動レイアウト結果 (`LayoutResult`) を不変のベースラインとし、ユーザー編集は `handle -> {x, y}` 等の差分マップ（オーバーライド）としてクライアント側の状態に保持する。描画時にベースラインへオーバーライドを適用して最終座標を得る。オーバーライドはプロジェクト保存データの一部として永続化する ([12_specifications-data_format.md](12_specifications-data_format.md))。詳細は [ADR-02](20_architecture.md) を参照。
+
+### コマンドスタックによる Undo/Redo
+
+**UID**: SP-05-03 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-05-06
+
+ノード移動・表示項目切替・枝の表示/非表示・**自動レイアウトの再実行**を含む全編集操作をコマンドオブジェクトとしてスタックに積む。各コマンドは適用前状態への逆操作を持つ。自動レイアウト再実行のコマンドは「実行前のオーバーライド全体」をスナップショットとして保持し、Undo で復元する。
+
+### プロジェクトの保存形式
+
+**UID**: SP-05-04 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-05-08
+
+保存データは元 `.gpkg` ファイルへの参照（ファイル名・サイズ・変更日時によるフィンガープリント）とオーバーライド・スタイル設定・標題設定を含む JSON とし、`.gpkg` 本体は書き換えない。詳細スキーマは [12_specifications-data_format.md](12_specifications-data_format.md) を参照。
+
+### ビューポート操作
+
+**UID**: SP-05-05 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-05-09
+
+マウスホイールでズーム、ドラッグ（ノード上以外）でパンを行う。ズーム範囲は 25%〜400% とする。
+
+---
+
+## 6. 意匠
+
+### 標題の配置
+
+**UID**: SP-06-01 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-06-01
+
+既定では図の最も右側（横書き時は最上部）に、毛筆体フォントで縦書き配置する。文言・フォント・文字サイズ・位置オフセットをスタイル設定として保持する。
+
+### フォントトークン
+
+**UID**: SP-06-02 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-06-02
+
+本文用・標題用それぞれに、あらかじめ同梱した書体（毛筆体/明朝体/楷書体寄り）から選択できるプルダウンを用意する。フォントファイルは `web/public/fonts/` に自己ホストし、外部 CDN に依存しない (RQ-08-01)。
+
+### カラートークン
+
+**UID**: SP-06-03 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-06-03
+
+文字色・線色・背景色・強調色（基準人物・故人表現）を CSS カスタムプロパティとして一括管理し、スタイル設定パネルから変更する。
+
+---
+
+## 7. 出力・印刷
+
+### 印刷ビュー
+
+**UID**: SP-07-01 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-07-01
+
+CSS `@page` とページ境界のオーバーレイ表示により、通常の編集ビューとは別モードで印刷結果相当の見た目を画面上に再現する。
+
+### 用紙倍率の自動調整
+
+**UID**: SP-07-02 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-07-02
+
+`LayoutResult` の全体外接矩形と、選択した用紙サイズ・余白から縮小倍率を計算し、1 枚に収める場合は等比縮小、A4 タイル印刷 (SP-07-04) の場合は分割前提でこの自動倍率計算を適用しない。
+
+### 系統分割
+
+**UID**: SP-07-03 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-07-03
+
+利用者が指定した分割起点人物ごとに SP-05-01 の到達可能集合計算を適用し、`LayoutResult` を複数の部分集合へ分割する。同一人物が複数系統の境界に位置する場合は両系統に重複して含め、双方に「他系統参照」の注記を付す。
+
+### A4 タイル印刷
+
+**UID**: SP-07-04 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-07-04
+
+`LayoutResult` の全体外接矩形を、指定倍率における A4 印刷可能領域（余白控除後）で格子状に分割する。各タイルにのりしろ（既定 10mm）・裁ち合わせ用のトンボ・行列インデックスによるページ番号（例: `B-2`）を付す。分割アルゴリズムの詳細は [12_specifications-data_format.md](12_specifications-data_format.md) の `TilePage` 定義を参照。
+
+### PDF / SVG / PNG 出力
+
+**UID**: SP-07-05 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-07-05
+- **Type**: Parent
+  **ID**: RQ-07-06
+
+PDF はブラウザの印刷機能（`window.print()` + `@page`）を第一の実現手段とする。SVG は描画に用いた SVG 要素をそのままシリアライズして出力する。PNG は SVG を Canvas 経由でラスタライズする。決定的な自動 PDF 生成が必要になった場合に限り、サーバ側 Playwright(Chromium) 呼び出しを追加する。
+
+---
+
+## 8. 非機能仕様
+
+### ローカル実行の裏付け
+
+**UID**: SP-08-01 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-08-01
+
+FastAPI サーバは既定で `127.0.0.1` にのみバインドし、外部ネットワークへのアウトバウンド通信（テレメトリ・フォント CDN 等）を行わない。フォントは自己ホストする (SP-06-02)。
+
+### 性能目標
+
+**UID**: SP-08-02 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-08-02
+
+実データ規模（136 人・8 世代）を基準値とし、gpkg アップロードからレイアウト初期表示までを 3 秒以内、ノードドラッグ操作のフレーム落ちなし（クライアント内完結、SP-05-02）を目標とする。具体的な数値目標は Phase 3 実装後に実測して見直す。
+
+### コアロジックのテスト戦略
+
+**UID**: SP-08-03 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-08-03
+
+`model/` `format/` `layout/`（Python コア）は画面描画・ネットワークに依存しない純粋関数として実装し、pytest で検証する。テストフィクスチャは `tests/fixtures/` の合成 Gramps XML を用い、実データには依存しない。
+
+### 文字の保持
+
+**UID**: SP-08-04 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-08-04
+
+XML パース・JSON シリアライズ・HTML 描画のいずれの段階でも Unicode 正規化 (NFC/NFKC 等) を適用しない。文字列は UTF-8 のバイト列として入力から出力まで一貫させる。

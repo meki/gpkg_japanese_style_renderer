@@ -2,3 +2,21 @@ __example_data/
 **/copilot-instructions.md
 **/CLAUDE.md
 **/AGENTS.md
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Node / web frontend
+node_modules/
+web/dist/
+
+# StrictDoc export output
+docs/_output/

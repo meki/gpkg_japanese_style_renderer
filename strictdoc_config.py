@@ -3,7 +3,7 @@ from strictdoc.core.project_config import ProjectConfig
 
 def create_config() -> ProjectConfig:
     config = ProjectConfig(
-        project_title="GenBook Forum",
+        project_title="gpkg Japanese Style Renderer",
         project_features= [
             "TABLE_SCREEN",
             "TRACEABILITY_SCREEN",
