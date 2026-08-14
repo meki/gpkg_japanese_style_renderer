@@ -32,9 +32,16 @@ src/gpkg_jsr/
   gramps/gpkg_reader.py   Gramps .gpkg 読み込み。元 src/gpkg_reader.py を無変更で移設したもの。
                            ruff/mypy の strict ルールは per-file-ignore / override で緩めてある
                            (pyproject.toml を参照) — 新規コードには通常どおり全ルールを適用する。
-  model/, format/         Phase 1 以降で追加 (PersonView・DAG・和暦・漢数字変換)
+                           このモジュールの list フィールドは型引数なし (list[Any] 相当) のため、
+                           呼び出し側で str 化する際に mypy が Any 漏れを検出したら
+                           typing.cast で明示する (format/name_rules.py の例を参照)。
+  format/wareki.py        元号テーブル・和暦変換 (Phase 1)
+  format/kanji_number.py  漢数字変換 (Phase 1)
+  format/name_rules.py    家系姓判定・姓省略・旧姓 (Phase 1)
+  model/graph.py          世代割当・到達可能集合計算 (Phase 1)
+  model/view.py           Person -> PersonView への正規化 (Phase 1)
   layout/                 Phase 2 以降で追加 (LayoutResult・自動レイアウト・印刷割付)
   api/                    Phase 3 以降で追加 (FastAPI)
 ```
 
-現状 `gramps/` のみ実装済み。ディレクトリ構成の全体像は [20_architecture.md](20_architecture.md) の AD-01-02 を参照。
+ディレクトリ構成の全体像は [20_architecture.md](20_architecture.md) の AD-01-02 を参照。
