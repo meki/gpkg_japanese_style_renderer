@@ -40,7 +40,10 @@ src/gpkg_jsr/
   format/name_rules.py    家系姓判定・姓省略・旧姓 (Phase 1)
   model/graph.py          世代割当・到達可能集合計算 (Phase 1)
   model/view.py           Person -> PersonView への正規化 (Phase 1)
-  layout/                 Phase 2 以降で追加 (LayoutResult・自動レイアウト・印刷割付)
+  layout/types.py         LayoutResult 等の pydantic モデル。Python/TS の唯一の契約 (Phase 2)
+  layout/metrics.py       縦書きノードの寸法推定 (文字数ベースの近似。ADR-01) (Phase 2)
+  layout/engine.py        自動レイアウト計算 (粗い版。重なり解消は Phase 6) (Phase 2)
+  layout/paging.py        系統分割・A4 タイル割付。Phase 6 以降で追加
   api/                    Phase 3 以降で追加 (FastAPI)
 ```
 
