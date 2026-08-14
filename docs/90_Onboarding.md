@@ -44,7 +44,21 @@ src/gpkg_jsr/
   layout/metrics.py       縦書きノードの寸法推定 (文字数ベースの近似。ADR-01) (Phase 2)
   layout/engine.py        自動レイアウト計算 (粗い版。重なり解消は Phase 6) (Phase 2)
   layout/paging.py        系統分割・A4 タイル割付。Phase 6 以降で追加
-  api/                    Phase 3 以降で追加 (FastAPI)
+  api/app.py              FastAPI ルーティング (11_specifications-APIs.md) (Phase 3)
+  api/store.py            アップロード済みプロジェクトのインメモリ管理 (Phase 3)
+  api/schemas.py          API 応答用の pydantic モデル (Phase 3)
+  api/errors.py           共通エラー応答形式 (API-00-02) (Phase 3)
+web/                       Phase 3 で追加 (Vite + React + TypeScript)
 ```
+
+サーバの起動:
+
+```bash
+uv run uvicorn gpkg_jsr.api.app:app --reload --port 8000
+```
+
+`GET /api/v1/layout` は現状 `root_handle` が必須 (11_specifications-APIs.md の
+API-02-01 の実装範囲メモを参照)。「全人物を1つの図に」(RQ-05-01) は Phase 4 で
+拡張する。
 
 ディレクトリ構成の全体像は [20_architecture.md](20_architecture.md) の AD-01-02 を参照。

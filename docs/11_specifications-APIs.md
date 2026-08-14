@@ -69,6 +69,8 @@
 
 `GET /api/v1/projects/{project_id}/layout` — クエリパラメータ `root_handle`（省略時は全人物）、`direction`（`ancestors`|`descendants`|`both`）を受け取り、`LayoutResult` (SP-05-01, SP-02) を計算して返す。この応答はベースラインであり、クライアント側のオーバーライドは含まない。
 
+**Phase 3 時点の実装範囲**: `layout.engine.build_layout` は単一起点からの子孫方向レイアウトのみに対応しており、`root_handle` は現状必須（省略時は `422 ROOT_HANDLE_REQUIRED`）。`direction`（祖先方向・両方向）のクエリパラメータは未実装。「省略時は全人物」(RQ-05-01) と枝の表示/非表示 (RQ-05-02, SP-05-01 の到達可能集合計算は Phase 1 で実装済み) を用いた `direction` 対応は、対話編集を実装する Phase 4 で拡張する。
+
 ### 人物一覧の取得
 
 **UID**: API-02-02 \
