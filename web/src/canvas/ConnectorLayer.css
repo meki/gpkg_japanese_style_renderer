@@ -1,0 +1,22 @@
+.connector-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.connector-layer__marriage {
+  stroke: var(--fg-line, #333);
+  stroke-width: 3;
+}
+
+.connector-layer__child {
+  fill: none;
+  stroke: var(--fg-line, #333);
+  stroke-width: 2;
+}
+
+.connector-layer__child--adopted {
+  stroke-dasharray: 6 4;
+}

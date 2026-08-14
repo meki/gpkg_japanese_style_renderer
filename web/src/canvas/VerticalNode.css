@@ -1,0 +1,74 @@
+.vertical-node {
+  position: absolute;
+  box-sizing: border-box;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.2em;
+  padding: 0.2em;
+  border: 1px solid var(--fg-line, #333);
+  background: var(--bg-node, #fffdf7);
+  font-family: var(--font-body, "Shippori Mincho", serif);
+  font-size: 15px;
+  overflow: hidden;
+}
+
+.vertical-node--deceased {
+  border-style: double;
+  border-width: 4px;
+}
+
+.vertical-node--focus {
+  border-color: var(--fg-focus, #b5321a);
+  border-width: 2px;
+  box-shadow: 0 0 0 1px var(--fg-focus, #b5321a);
+}
+
+.vertical-node--spouse-in {
+  opacity: 0.92;
+}
+
+.vertical-node__name {
+  font-size: 1em;
+  line-height: 1.15;
+  display: flex;
+  flex-direction: row;
+  gap: 0.1em;
+}
+
+.vertical-node__former-surname {
+  font-size: 0.6em;
+  opacity: 0.7;
+}
+
+.vertical-node__side {
+  font-size: 0.55em;
+  display: flex;
+  flex-direction: row;
+  gap: 0.3em;
+  color: #555;
+}
+
+.vertical-node__label {
+  writing-mode: vertical-rl;
+}
+
+.vertical-node__date {
+  writing-mode: vertical-rl;
+  white-space: nowrap;
+}
+
+.vertical-node__photo {
+  writing-mode: horizontal-tb;
+  width: 2.2em;
+  height: auto;
+  object-fit: cover;
+  align-self: flex-start;
+}
+
+ruby rt {
+  font-size: 0.55em;
+  color: #666;
+}

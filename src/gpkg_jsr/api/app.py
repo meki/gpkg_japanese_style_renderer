@@ -134,3 +134,21 @@ async def get_media(project_id: str, object_handle: str) -> Response:
     if data is None:
         raise ApiError(404, "MEDIA_NOT_FOUND", f"media bytes not found: {object_handle}")
     return Response(content=data, media_type=media.mime or "application/octet-stream")
+
+
+@app.get("/api/v1/projects/{project_id}/people/{person_handle}/photo")
+async def get_person_photo(project_id: str, person_handle: str) -> Response:
+    """API-03-02: 人物 handle から直接、先頭のメディアを取得する。"""
+    state = _get_project_or_404(project_id)
+    person = state.db.get_person(person_handle)
+    if person is None:
+        raise ApiError(404, "PERSON_NOT_FOUND", f"person not found: {person_handle}")
+    data = state.db.photo_bytes(person)
+    if data is None:
+        raise ApiError(404, "MEDIA_NOT_FOUND", f"no photo available for person: {person_handle}")
+    mime = "application/octet-stream"
+    if person.objrefs:
+        media = state.db.objects.get(person.objrefs[0])
+        if media is not None and media.mime:
+            mime = media.mime
+    return Response(content=data, media_type=mime)

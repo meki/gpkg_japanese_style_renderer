@@ -90,6 +90,18 @@
 
 `GET /api/v1/projects/{project_id}/media/{object_handle}` — `MediaObject` の実データをそのまま `mime` に応じた `Content-Type` でストリーミング返却する。存在しない `object_handle` は `404 Not Found`。
 
+### 人物の顔写真の取得
+
+**UID**: API-03-02 \
+**STATUS**: Active \
+**RELATIONS**:
+- **Type**: Parent
+  **ID**: RQ-03-07
+- **Type**: Parent
+  **ID**: DF-01-03
+
+`GET /api/v1/projects/{project_id}/people/{person_handle}/photo` — `PersonView.has_photo` (DF-01-03) は写真の有無のみを示し、対応する `MediaObject` の `object_handle` を含まない。フロントエンドが `object_handle` を知らなくても表示できるよう、人物 handle から `GrampsDatabase.photo_bytes()` (先頭の `objref` を解決) で直接取得する経路を別途用意する。レスポンス形式は API-03-01 と同じ。写真が無い人物、または `object_handle` は存在するが実バイト列が取得できない場合は `404 Not Found`。
+
 ## プロジェクト保存（編集内容の永続化）
 
 ### 保存データの書き出し

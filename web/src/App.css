@@ -1,0 +1,53 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+}
+
+.app__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 16px;
+  background: #222;
+  color: #eee;
+  flex-wrap: wrap;
+}
+
+.app__title {
+  font-size: 16px;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.app__upload {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.app__summary {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.app__error {
+  color: #ff8a80;
+  font-size: 13px;
+}
+
+.app__canvas-area {
+  flex: 1;
+  min-height: 0;
+}
+
+.app__placeholder {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  font-size: 14px;
+}

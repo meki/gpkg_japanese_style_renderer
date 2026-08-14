@@ -6,10 +6,21 @@ Gramps のエクスポートファイル (`.gpkg`) を、日本の伝統的な�
 
 ## セットアップ
 
-[uv](https://docs.astral.sh/uv/) を使用する。
+バックエンド (Python) は [uv](https://docs.astral.sh/uv/)、フロントエンド (`web/`) は npm を使用する。
 
 ```bash
 uv sync
+cd web && npm install
+```
+
+## 開発サーバの起動
+
+```bash
+uv run uvicorn gpkg_jsr.api.app:app --reload --port 8000
+```
+
+```bash
+cd web && npm run dev
 ```
 
 ## ローカル CI 相当の検証コマンド
@@ -20,6 +31,10 @@ uv sync
 uv run pytest
 uv run ruff check .
 uv run mypy src tests
+```
+
+```bash
+cd web && npx tsc -b && npm run lint && npm run build
 ```
 
 ## 要件・仕様ドキュメントの検証

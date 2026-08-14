@@ -48,17 +48,41 @@ src/gpkg_jsr/
   api/store.py            アップロード済みプロジェクトのインメモリ管理 (Phase 3)
   api/schemas.py          API 応答用の pydantic モデル (Phase 3)
   api/errors.py           共通エラー応答形式 (API-00-02) (Phase 3)
-web/                       Phase 3 で追加 (Vite + React + TypeScript)
+web/src/
+  types/layout.ts         LayoutResult 等の TS 型定義。pydantic モデルと手動で対応させる (Phase 3)
+  api/client.ts            バックエンド API の fetch ラッパー (Phase 3)
+  canvas/VerticalNode.tsx   縦書き人物ノード (CSS writing-mode + <ruby>) (Phase 3)
+  canvas/ConnectorLayer.tsx SVG による夫婦連結線・親子接続線 (Phase 3)
+  canvas/Viewport.tsx       パン・ズーム (Phase 3)
+  canvas/FamilyTreeCanvas.tsx 上記3つを束ね、並び順軸の左右反転を適用する (Phase 3)
 ```
 
-サーバの起動:
+サーバの起動 (2 つとも起動する):
 
 ```bash
 uv run uvicorn gpkg_jsr.api.app:app --reload --port 8000
 ```
 
+```bash
+cd web && npm install && npm run dev
+```
+
+`web/vite.config.ts` の dev サーバは `/api` を `http://127.0.0.1:8000` へプロキシする
+(ポート番号を変える場合はここも合わせて変更する)。フロントエンドの検証コマンド:
+
+```bash
+cd web && npx tsc -b && npm run lint && npm run build
+```
+
 `GET /api/v1/layout` は現状 `root_handle` が必須 (11_specifications-APIs.md の
 API-02-01 の実装範囲メモを参照)。「全人物を1つの図に」(RQ-05-01) は Phase 4 で
 拡張する。
+
+**並び順軸 (x) の左右反転を忘れないこと**: `layout.engine.build_layout` が返す
+x 座標は「年長者が小さい x」の抽象順序であり、日本式表示 (年長者を右に配置、
+RQ-02-03) への変換は描画層 (`FamilyTreeCanvas.tsx`) の責務。この反転を Phase 3
+の初回実装で一度見落とし、ブラウザでの目視確認で気づいて修正した
+(10_specifications.md の SP-02-07 を参照)。ノード・接続線の両方に同じ反転を
+一貫して適用すること。
 
 ディレクトリ構成の全体像は [20_architecture.md](20_architecture.md) の AD-01-02 を参照。

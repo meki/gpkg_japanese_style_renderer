@@ -8,6 +8,11 @@ from fastapi.testclient import TestClient
 import gpkg_jsr.api.app as app_module
 from gpkg_jsr.api.store import ProjectStore
 
+# tests/conftest.py の minimal_family_gpkg_bytes フィクスチャが同梱するダミー
+# 写真データ (DUMMY_PHOTO_BYTES) と同じ値。モジュール越しの再インポートを
+# 避けるためここでも同じ値を定義する。
+DUMMY_PHOTO_BYTES = b"\xff\xd8\xff\xe0 dummy jpeg bytes for testing \xff\xd9"
+
 
 @pytest.fixture
 def client() -> Iterator[TestClient]:
@@ -161,11 +166,34 @@ class TestMedia:
         assert response.status_code == 404
         assert response.json()["error"]["code"] == "MEDIA_NOT_FOUND"
 
-    def test_known_object_without_archived_bytes_returns_404(
+    def test_known_object_returns_bytes(
         self, client: TestClient, uploaded_project_id: str
     ) -> None:
-        # _o0001 のメタデータは存在するが、テスト用 .gpkg には実ファイルを
-        # 同梱していないため bytes は取得できない (実運用では取得できるケース)。
         response = client.get(f"/api/v1/projects/{uploaded_project_id}/media/_o0001")
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "image/jpeg"
+        assert response.content == DUMMY_PHOTO_BYTES
+
+
+class TestPersonPhoto:
+    def test_person_with_photo_returns_bytes(
+        self, client: TestClient, uploaded_project_id: str
+    ) -> None:
+        response = client.get(f"/api/v1/projects/{uploaded_project_id}/people/_p0004/photo")
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "image/jpeg"
+        assert response.content == DUMMY_PHOTO_BYTES
+
+    def test_person_without_photo_returns_404(
+        self, client: TestClient, uploaded_project_id: str
+    ) -> None:
+        response = client.get(f"/api/v1/projects/{uploaded_project_id}/people/_p0001/photo")
         assert response.status_code == 404
         assert response.json()["error"]["code"] == "MEDIA_NOT_FOUND"
+
+    def test_unknown_person_returns_404(
+        self, client: TestClient, uploaded_project_id: str
+    ) -> None:
+        response = client.get(f"/api/v1/projects/{uploaded_project_id}/people/_p9999/photo")
+        assert response.status_code == 404
+        assert response.json()["error"]["code"] == "PERSON_NOT_FOUND"
