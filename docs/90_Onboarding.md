@@ -64,6 +64,8 @@ web/src/
   canvas/Legend.tsx        故人の凡例。該当者がいる場合のみ表示 (SP-03-09) (Phase 5)
   canvas/layoutConstants.ts UNIT_PX・ピクセルサイズ計算を FamilyTreeCanvas と
                            App (標題の高さ算出に使う) で共有するための切り出し (Phase 5)
+  export/exportChart.ts   SVG 出力 (<foreignObject> による DOM のシリアライズ)。
+                           PNG 出力は未実装、下記を参照 (Phase 6)
 ```
 
 意匠用フォント (SP-06-02) は `@fontsource/yuji-syuku` (標題)・
@@ -119,5 +121,25 @@ RQ-02-03) への変換は描画層 (`FamilyTreeCanvas.tsx`) の責務。この�
 までは連動して隠さない。折りたたむと、隠れた人物の配偶者だけが他と接続されず
 画面上に孤立して残る。RQ-05-02 の要求自体は満たすが、見た目の課題として
 Phase 5/6 で見直す候補。
+
+**`<foreignObject>` は Canvas を tainted にする (PNG 出力が実装できない理由)**:
+人物ノードを HTML (`writing-mode` + `<ruby>`) で描画しているため、家系図を
+SVG 化するには `<foreignObject>` で DOM をそのまま埋め込む方式しか現実的でない
+(`export/exportChart.ts`)。この SVG を `<img>` 経由で `<canvas>` に描画し
+`toBlob()`/`toDataURL()` で PNG 化しようとすると、ブラウザでの実地検証により
+**内容（フォント参照・写真 `<img>` 等の外部リソースの有無）に関わらず
+`SecurityError: Tainted canvases may not be exported` が発生する**ことを確認した
+(`<foreignObject>` の存在自体が原因で、外部リソースを取り除いても再現する)。
+そのため PNG 出力ボタンは実装せずに見送った (SVG 出力は影響を受けないため実装
+済み)。10_specifications.md の SP-07-05 に詳細を記録。PNG が必要になった場合は
+html2canvas 等の `<foreignObject>` を使わないライブラリ、またはサーバ側の
+ヘッドレスブラウザによるラスタライズを検討すること。
+
+**印刷ビューは "1 枚に収める" ケースのみ対応**: `@media print` CSS でツールバー等の
+編集用 UI を非表示にし、`window.print()` で PDF 化できる (SP-07-01, SP-07-05)。
+一方で系統分割 (SP-07-03) と、のりしろ・トンボ付きの A4 タイル印刷 (SP-07-04) は
+未実装。図が 1 ページに収まらない場合はブラウザの既定のページ分割に委ねる
+(意図した分割にはならない)。レイアウトの重なり・交差解消 (ADR-01 で Phase 6 に
+据え置くとしていたもの) も未着手。次にこのプロジェクトへ着手する際の最有力候補。
 
 ディレクトリ構成の全体像は [20_architecture.md](20_architecture.md) の AD-01-02 を参照。

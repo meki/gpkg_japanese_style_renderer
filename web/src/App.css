@@ -91,3 +91,39 @@
   color: #888;
   font-size: 14px;
 }
+
+/* 印刷ビュー (SP-07-01)。PDF 出力はブラウザの印刷機能を第一の手段とする
+   (SP-07-05)。ズーム/パン・編集用 UI を印刷対象から除外し、図を自然な
+   サイズで出力する。系統分割・A4 タイル印刷 (SP-07-03, SP-07-04) は
+   このフェーズでは未実装 (90_Onboarding.md を参照)。 */
+@media print {
+  .app__toolbar,
+  .app__edit-bar,
+  .viewport__zoom-indicator,
+  .legend,
+  .vertical-node__collapse-toggle {
+    display: none !important;
+  }
+
+  .app {
+    height: auto;
+  }
+
+  .app__canvas-area {
+    overflow: visible !important;
+  }
+
+  .viewport {
+    overflow: visible !important;
+    cursor: default;
+  }
+
+  .viewport__content {
+    position: static !important;
+    transform: none !important;
+  }
+
+  @page {
+    margin: 10mm;
+  }
+}

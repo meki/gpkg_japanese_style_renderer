@@ -9,6 +9,7 @@ import { TitleDisplay } from "./canvas/TitleDisplay";
 import { Viewport } from "./canvas/Viewport";
 import { CommandStack, makeCommand } from "./editing/commandStack";
 import { applyOverrides, createEmptyOverrides, descendantsOf, type Overrides } from "./editing/overrides";
+import { downloadSvg, serializeChartToSvg } from "./export/exportChart";
 import { DEFAULT_DISPLAY_OPTIONS, type DisplayOptions } from "./types/displayOptions";
 import type { Calendar, LayoutResult } from "./types/layout";
 
@@ -53,6 +54,7 @@ function App() {
   // 再レンダリングのきっかけを作る。
   const [stackVersion, setStackVersion] = useState(0);
   const loadFileInputRef = useRef<HTMLInputElement>(null);
+  const chartRowRef = useRef<HTMLDivElement>(null);
 
   const displayLayout = useMemo(
     () => (baseLayout ? applyOverrides(baseLayout, overrides) : null),
@@ -215,6 +217,16 @@ function App() {
 
   function toggleDisplayOption(key: keyof DisplayOptions) {
     setDisplayOptions((current) => ({ ...current, [key]: !current[key] }));
+  }
+
+  function handlePrint() {
+    window.print();
+  }
+
+  function handleExportSvg() {
+    if (!chartRowRef.current || !project) return;
+    const svgText = serializeChartToSvg(chartRowRef.current);
+    downloadSvg(svgText, `${project.filename.replace(/\.gpkg$/i, "")}.svg`);
   }
 
   function handleSaveDocument() {
@@ -411,6 +423,13 @@ function App() {
             className="app__hidden-file-input"
             onChange={handleLoadDocument}
           />
+          <span className="app__edit-bar-separator" />
+          <button type="button" onClick={handlePrint}>
+            印刷
+          </button>
+          <button type="button" onClick={handleExportSvg}>
+            SVGで書き出す
+          </button>
         </div>
       )}
 
@@ -418,7 +437,7 @@ function App() {
         {displayLayout && project ? (
           <>
             <Viewport zoom={zoom} onZoomChange={setZoom}>
-              <div className="app__chart-row">
+              <div className="app__chart-row" ref={chartRowRef}>
                 <FamilyTreeCanvas
                   layout={displayLayout}
                   projectId={project.project_id}
