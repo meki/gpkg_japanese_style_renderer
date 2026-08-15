@@ -5,7 +5,10 @@
   text-orientation: mixed;
   display: flex;
   flex-direction: row;
-  align-items: flex-start;
+  /* 縦書き (vertical-rl) では row の交差軸が横方向になる。flex-start だと
+     内容が frame の片側に寄って反対側に無駄な余白ができるため、中央寄せに
+     する (実データ確認での指摘: 「top-center」配置)。 */
+  align-items: center;
   gap: 0.2em;
   padding: 0.2em;
   border: 1px solid var(--fg-line, #333);
@@ -131,12 +134,23 @@
   white-space: nowrap;
 }
 
-.vertical-node__photo {
+/* 顔写真は罫線ボックス (frame) の外側、画面表示では frame の直下に独立した
+   ブロックとして配置する。frame の高さに含めると名前が短い人物のノードまで
+   不必要に縦長になるため、生没年列と同様に frame とは別要素にする。幅は
+   frame と揃える (SP-03-XX)。 */
+.vertical-node__photo-column {
+  position: absolute;
+  box-sizing: border-box;
   writing-mode: horizontal-tb;
-  width: 2.2em;
-  height: auto;
+  padding-top: 6px;
+  pointer-events: none;
+}
+
+.vertical-node__photo-column img {
+  display: block;
+  width: 100%;
+  height: calc(100% - 6px);
   object-fit: cover;
-  align-self: flex-start;
 }
 
 ruby rt {

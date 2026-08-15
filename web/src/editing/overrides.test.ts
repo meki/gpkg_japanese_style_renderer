@@ -33,6 +33,7 @@ function node(handle: string, x: number, generation: number): PersonNode {
     width: 2,
     height: 2,
     date_column_width: 0,
+    photo_height: 0,
     view: view(),
   };
 }

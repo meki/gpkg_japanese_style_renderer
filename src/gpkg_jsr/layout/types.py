@@ -28,10 +28,11 @@ class DisplayOptions(BaseModel):
 
 class NodeSize(BaseModel):
     width: float  # 配置に使う占有幅 (frame_width + date_column_width)
-    height: float  # 罫線ボックス (frame) 自体の高さ。生没年はここに含めない
+    height: float  # 罫線ボックス (frame) 自体の高さ。生没年・写真はここに含めない
     frame_width: float  # 罫線で囲むノード本体の幅
     date_column_width: float  # 生没年表記用に frame の外側へ確保する列の幅 (0 なら無し)
     date_column_height: float  # 生没年表記列自体の高さ (行間の確保に使う。0 なら無し)
+    photo_height: float = 0.0  # 顔写真用に frame の外側 (下) へ確保する高さ (0 なら無し)
 
 
 class PersonNode(BaseModel):
@@ -43,6 +44,7 @@ class PersonNode(BaseModel):
     width: float  # 罫線ボックス (frame) の幅。date_column_width は含まない
     height: float
     date_column_width: float  # 生没年列の幅。描画層は x+width の外側 (画面表示では右隣) に配置する
+    photo_height: float = 0.0  # 顔写真列の高さ。描画層は y+height の外側 (下) に配置する
     view: PersonView
 
 

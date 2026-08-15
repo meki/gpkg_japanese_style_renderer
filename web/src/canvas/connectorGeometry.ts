@@ -112,7 +112,9 @@ export function computeChildEdgeGeometry(
   } else {
     const solo = parents[0];
     startX = solo.x + solo.width / 2;
-    startY = solo.y + solo.height;
+    // 単親の場合、線は frame の下端ではなく (顔写真があれば) その下端から
+    // 降ろす。顔写真は frame の直後に挟んで描画するため (engine.py と同じ)。
+    startY = solo.y + solo.height + solo.photo_height;
   }
 
   const childX = child.x + child.width / 2;

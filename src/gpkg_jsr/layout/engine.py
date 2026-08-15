@@ -159,12 +159,16 @@ def build_layout(
     _subtree_width(context, root)
     _assign_positions(context, root, 0.0)
 
-    # 世代の行の高さは、frame の高さと日付列の高さのうち大きい方で決める。
-    # frame 自体は日付の長さに引きずられないが (metrics.py 参照)、日付列が
-    # frame より高くなる場合に次の世代と重ならないだけの余白は必要になる。
+    # 世代の行の高さは、(frame の高さ+顔写真の高さ) と日付列の高さのうち
+    # 大きい方で決める。frame 自体は日付の長さに引きずられないが
+    # (metrics.py 参照)、日付列や顔写真が frame より高くなる場合に次の世代と
+    # 重ならないだけの余白は必要になる。顔写真は frame の直下に続けて配置する
+    # ため、frame の高さと足し合わせる (日付列は frame と横並びのため足さない)。
     generation_height: dict[int, float] = {}
     for handle, gen in generations.items():
-        occupied = max(sizes[handle].height, sizes[handle].date_column_height)
+        occupied = max(
+            sizes[handle].height + sizes[handle].photo_height, sizes[handle].date_column_height
+        )
         generation_height[gen] = max(generation_height.get(gen, 0.0), occupied)
     generation_y: dict[int, float] = {}
     cursor_y = 0.0
@@ -189,6 +193,7 @@ def build_layout(
                 width=size.frame_width,
                 height=size.height,
                 date_column_width=size.date_column_width,
+                photo_height=size.photo_height,
                 view=views[handle],
             )
         )
@@ -231,11 +236,13 @@ def build_layout(
         elif father_in:
             assert father is not None
             start_x = context.frame_center_x(father)
-            start_y = generation_y[parent_gen] + sizes[father].height
+            # 単親の場合、線は frame の下端ではなく (顔写真があれば) その下端
+            # から降ろす。frame の直後に写真を挟んで描画するため。
+            start_y = generation_y[parent_gen] + sizes[father].height + sizes[father].photo_height
         else:
             assert mother is not None
             start_x = context.frame_center_x(mother)
-            start_y = generation_y[parent_gen] + sizes[mother].height
+            start_y = generation_y[parent_gen] + sizes[mother].height + sizes[mother].photo_height
 
         parent_handles = [h for h in (father, mother) if h is not None and h in included]
         bar_y = generation_y[parent_gen] + generation_height[parent_gen] + GENERATION_GAP / 2
@@ -309,16 +316,19 @@ def _build_auxiliary_data(
         )
         size = estimate_node_size(view, options)
         gen = generations[child_handle]
+        # aux_bottom は補助ノード一式 (frame + 顔写真があればその下端まで) の
+        # 下端。顔写真がある場合は frame をその分だけ上へずらして確保する。
         aux_bottom = generation_y[gen] - AUXILIARY_OFFSET
         node = PersonNode(
             handle=parent.handle,
             generation=gen,
             order_in_generation=-1,
             x=context.frame_center_x(child_handle) - size.frame_width / 2,
-            y=aux_bottom - size.height,
+            y=aux_bottom - size.photo_height - size.height,
             width=size.frame_width,
             height=size.height,
             date_column_width=size.date_column_width,
+            photo_height=size.photo_height,
             view=view,
         )
         node_by_handle[parent.handle] = node
@@ -363,7 +373,7 @@ def _build_auxiliary_data(
                 solo = father_node if father_node is not None else mother_node
                 assert solo is not None
                 start_x = solo.x + solo.width / 2
-                start_y = solo.y + solo.height
+                start_y = solo.y + solo.height + solo.photo_height
                 parent_handles = [solo.handle]
 
             child_gen = generations[handle]

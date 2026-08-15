@@ -80,7 +80,8 @@ export function FamilyTreeCanvas({
         const left = mirror(anchorNode.x + anchorNode.width);
         const right = mirror(anchorNode.x);
         const top = anchorNode.y * UNIT_PX;
-        const bottom = (anchorNode.y + anchorNode.height) * UNIT_PX;
+        // "down" ハンドルは顔写真がある場合その下にはみ出させ、写真と重ならないようにする。
+        const bottom = (anchorNode.y + anchorNode.height + anchorNode.photo_height) * UNIT_PX;
         return (
           <RevealHandle
             key={anchor.key}

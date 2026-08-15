@@ -111,6 +111,9 @@ export function VerticalNode({
   const flipped = dateSide === "left";
   const boxDisplayLeft = flipped ? cellDisplayLeft + dateColumnWidthPx : cellDisplayLeft;
   const dateDisplayLeft = flipped ? cellDisplayLeft : cellDisplayLeft + frameWidthPx;
+  const frameHeightPx = node.height * scale;
+  const photoHeightPx = node.photo_height * scale;
+  const showPhoto = displayOptions.showPhotos && view.has_photo && photoHeightPx > 0;
 
   return (
     <>
@@ -143,13 +146,6 @@ export function VerticalNode({
         </div>
         {displayOptions.showBirthOrder && view.birth_order_label && (
           <span className="vertical-node__label">{view.birth_order_label}</span>
-        )}
-        {displayOptions.showPhotos && view.has_photo && (
-          <img
-            className="vertical-node__photo"
-            src={personPhotoUrl(projectId, node.handle)}
-            alt=""
-          />
         )}
         <button
           type="button"
@@ -197,6 +193,19 @@ export function VerticalNode({
         >
           {view.birth_date_display && <span>{view.birth_date_display.text}</span>}
           {view.death_date_display && <span>{view.death_date_display.text}</span>}
+        </div>
+      )}
+      {showPhoto && (
+        <div
+          className="vertical-node__photo-column"
+          style={{
+            left: boxDisplayLeft,
+            top: displayTop + frameHeightPx,
+            width: frameWidthPx,
+            height: photoHeightPx,
+          }}
+        >
+          <img src={personPhotoUrl(projectId, node.handle)} alt="" />
         </div>
       )}
     </>

@@ -38,12 +38,17 @@ def test_ruby_toggle_has_no_effect_without_kana() -> None:
     assert with_ruby.width == without_ruby.width
 
 
-def test_photo_toggle_grows_node() -> None:
+def test_photo_toggle_does_not_inflate_the_frame() -> None:
+    """顔写真は frame (罫線ボックス) の外側 (画面表示では下) に別領域として
+    確保する。frame 自体の高さ・幅は写真の有無に左右されない (生没年と同様、
+    frame が不必要に大きくならないようにするための設計)。"""
     view = _view(has_photo=True)
     with_photo = estimate_node_size(view, DisplayOptions(show_photos=True))
     without_photo = estimate_node_size(view, DisplayOptions(show_photos=False))
-    assert with_photo.height > without_photo.height
-    assert with_photo.width >= without_photo.width
+    assert with_photo.height == without_photo.height
+    assert with_photo.frame_width == without_photo.frame_width
+    assert with_photo.photo_height > 0
+    assert without_photo.photo_height == 0
 
 
 def test_dates_toggle_affects_total_width_but_not_frame() -> None:

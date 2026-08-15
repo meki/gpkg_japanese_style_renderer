@@ -41,6 +41,11 @@ export interface PersonNode {
    * 列の幅。0 なら生没年を表示しない。
    */
   date_column_width: number;
+  /**
+   * 顔写真のために frame の外側 (画面表示では frame の直下) に確保する高さ。
+   * 0 なら顔写真を表示しない。
+   */
+  photo_height: number;
   view: PersonView;
 }
 

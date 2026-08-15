@@ -7,6 +7,6 @@ export const UNIT_PX = 32;
 export function computePixelSize(layout: LayoutResult): { width: number; height: number } {
   const allNodes = [...layout.nodes, ...layout.auxiliary_nodes];
   const maxX = Math.max(0, ...allNodes.map((n) => n.x + n.width));
-  const maxY = Math.max(0, ...allNodes.map((n) => n.y + n.height));
+  const maxY = Math.max(0, ...allNodes.map((n) => n.y + n.height + n.photo_height));
   return { width: maxX * UNIT_PX, height: maxY * UNIT_PX };
 }
