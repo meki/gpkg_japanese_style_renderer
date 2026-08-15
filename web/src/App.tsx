@@ -280,10 +280,18 @@ function App() {
     window.print();
   }
 
-  function handleExportSvg() {
+  async function handleExportSvg() {
     if (!chartRowRef.current || !project) return;
-    const svgText = serializeChartToSvg(chartRowRef.current);
-    downloadSvg(svgText, `${project.filename.replace(/\.gpkg$/i, "")}.svg`);
+    setError(null);
+    setBusy(true);
+    try {
+      const svgText = await serializeChartToSvg(chartRowRef.current);
+      downloadSvg(svgText, `${project.filename.replace(/\.gpkg$/i, "")}.svg`);
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setBusy(false);
+    }
   }
 
   function handleSaveDocument() {
@@ -496,7 +504,7 @@ function App() {
           <button type="button" onClick={handlePrint}>
             印刷
           </button>
-          <button type="button" onClick={handleExportSvg}>
+          <button type="button" onClick={handleExportSvg} disabled={busy}>
             SVGで書き出す
           </button>
         </div>

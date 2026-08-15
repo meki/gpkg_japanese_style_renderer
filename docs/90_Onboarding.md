@@ -260,6 +260,27 @@ React 側のドラッグハンドラが正しく動作しない（左クリッ�
 画面上に孤立して残る。RQ-05-02 の要求自体は満たすが、見た目の課題として
 Phase 5/6 で見直す候補。
 
+**印刷ビュー・SVG 出力には編集専用 UI (非表示ボタン・再表示ハンドル) を含めないこと**:
+ノード単位の非表示ボタン (`.vertical-node__hide-toggle`, SP-05-06) と再表示
+ハンドル (`.reveal-handle`, SP-05-06) を追加した際、`App.css` の
+`@media print` の非表示対象リストと `export/exportChart.ts` の
+`serializeChartToSvg()` の除去対象リストの両方に追加するのを忘れており、
+印刷プレビュー・SVG 出力の両方に編集用のボタン・ハンドルがそのまま写り込む
+不具合が実利用で報告された。**編集専用の UI 要素を新設したら、必ずこの 2 箇所
+(印刷 CSS と SVG エクスポートの除去セレクタ) の両方を同時に更新すること**
+(既存の `.vertical-node__collapse-toggle` も同じ扱いになっている)。
+
+**SVG 出力の `<img>` は data: URI として埋め込むこと (相対 URL のままだと単体で開けない)**:
+顔写真は `personPhotoUrl()` が返す `/api/v1/projects/{id}/people/{handle}/photo`
+という相対 URL を `src` に使っているため、アプリの画面内で見ている分には
+問題なく表示されるが、`serializeChartToSvg()` が生成した `.svg` を単体の
+ファイルとしてダウンロードし、別タブ・別オリジン・ローカルファイルとして
+開くと、その相対 URL は解決できずリンク切れ画像になる (実データ確認で発覚)。
+「単体で完結した SVG」という設計意図 (ファイル冒頭のコメント参照) を満たす
+には、シリアライズ前に `<img>` の `src` を `fetch()` で取得したバイト列から
+`data:` URI に変換して埋め込む必要がある (`inlinePhotoImages()`)。取得に
+失敗した画像は元の参照のまま残し、出力全体は失敗させない。
+
 **`<foreignObject>` は Canvas を tainted にする (PNG 出力が実装できない理由)**:
 人物ノードを HTML (`writing-mode` + `<ruby>`) で描画しているため、家系図を
 SVG 化するには `<foreignObject>` で DOM をそのまま埋め込む方式しか現実的でない

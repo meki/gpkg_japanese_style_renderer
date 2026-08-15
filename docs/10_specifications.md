@@ -534,6 +534,8 @@ CSS `@page` とページ境界のオーバーレイ表示により、通常の�
 
 PDF はブラウザの印刷機能（`window.print()` + `@page`）を第一の実現手段とする。SVG は描画に用いた SVG 要素をそのままシリアライズして出力する。PNG は SVG を Canvas 経由でラスタライズする。決定的な自動 PDF 生成が必要になった場合に限り、サーバ側 Playwright(Chromium) 呼び出しを追加する。
 
+印刷ビュー・SVG 出力のいずれも、編集用の UI（ノード単位の非表示ボタン `.vertical-node__hide-toggle` と再表示ハンドル `.reveal-handle`、枝の折りたたみボタン `.vertical-node__collapse-toggle`、SP-05-06）は含めない。印刷は `App.css` の `@media print` で非表示にし、SVG 出力は `export/exportChart.ts` の `serializeChartToSvg()` が DOM のクローンからこれらの要素を除去してからシリアライズする。SVG 出力はダウンロードした単体の `.svg` ファイルとして完結させる方針のため、顔写真の `<img src>`（`/api/v1/projects/{id}/people/{handle}/photo` という同一オリジンの相対 URL）もシリアライズ前に `fetch()` して `data:` URI へ変換して埋め込む。相対 URL のまま出力すると、別オリジン・別タブ・ローカルファイルとして開いたときにリンク切れになる。
+
 **PNG 出力の実装状況 (Phase 6)**: 「SVG を Canvas 経由でラスタライズする」方式を実装したところ、`<foreignObject>` を含む SVG 画像は内容（フォント参照・`<img>` 等の外部リソースの有無）に関わらず Canvas を "tainted" 状態にし、`canvas.toBlob()` がブラウザのセキュリティ制限で例外を送出することをブラウザでの実地検証で確認した。人物ノードを HTML (`writing-mode` + `<ruby>`) で描画している構成上、`<foreignObject>` を使わずに家系図を SVG 化すること自体が難しく、この方式での PNG 出力は断念した。SVG 出力は影響を受けないため実装済み。PNG が必要な場合は、DOM を `<foreignObject>` を介さず直接描画するライブラリ (html2canvas 等) か、サーバ側のヘッドレスブラウザによるラスタライズを別途検討する (未着手)。
 
 ---

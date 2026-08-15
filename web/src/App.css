@@ -106,7 +106,9 @@
   .app__edit-bar,
   .viewport__zoom-indicator,
   .legend,
-  .vertical-node__collapse-toggle {
+  .vertical-node__collapse-toggle,
+  .vertical-node__hide-toggle,
+  .reveal-handle {
     display: none !important;
   }
 
