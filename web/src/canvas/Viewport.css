@@ -30,3 +30,14 @@
   border-radius: 4px;
   pointer-events: none;
 }
+
+/* 右クリックドラッグによる矩形選択のオーバーレイ (RQ-05-11)。
+   viewport__content の子として置くことで pan/zoom の変換を自動的に共有し、
+   ノードと同じ座標系のまま left/top/width/height を指定できる。 */
+.viewport__selection-box {
+  position: absolute;
+  border: 1px dashed var(--fg-focus, #b5321a);
+  background: rgba(181, 50, 26, 0.08);
+  pointer-events: none;
+  z-index: 20;
+}

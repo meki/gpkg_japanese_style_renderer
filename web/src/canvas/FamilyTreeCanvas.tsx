@@ -5,20 +5,31 @@ import { buildNodeIndex, buildVisualNodeIndex, computeMarriageSides } from "./co
 import type { RevealAnchor } from "../editing/revealAnchors";
 import { computePixelSize, UNIT_PX } from "./layoutConstants";
 import { RevealHandle } from "./RevealHandle";
-import { VerticalNode } from "./VerticalNode";
+import { VerticalNode, type DragOffsetPx } from "./VerticalNode";
+
+interface ActiveDrag {
+  handle: string;
+  offsetPx: DragOffsetPx;
+}
 
 interface FamilyTreeCanvasProps {
   layout: LayoutResult;
   projectId: string;
   zoom: number;
   displayOptions?: DisplayOptions;
-  onNodeDragEnd?: (handle: string, x: number, y: number) => void;
+  onNodeDragEnd?: (handle: string, deltaX: number, deltaY: number) => void;
+  onNodeDragMove?: (handle: string, offsetPx: DragOffsetPx | null) => void;
   collapsibleHandles?: ReadonlySet<string>;
   collapsedHandles?: ReadonlySet<string>;
   onToggleCollapse?: (handle: string) => void;
   onHideNode?: (handle: string) => void;
   revealAnchors?: RevealAnchor[];
   onRevealNodes?: (handles: string[]) => void;
+  /** 右クリックドラッグの矩形選択で選ばれているノード (RQ-05-11)。 */
+  selectedHandles?: ReadonlySet<string>;
+  /** 選択グループのうち、今まさに物理的にドラッグされているノードとその
+   *  画面ピクセル移動量。選択中の他ノードはこれをそのままプレビューに使う。 */
+  activeDrag?: ActiveDrag | null;
 }
 
 export function FamilyTreeCanvas({
@@ -27,12 +38,15 @@ export function FamilyTreeCanvas({
   zoom,
   displayOptions = DEFAULT_DISPLAY_OPTIONS,
   onNodeDragEnd = () => {},
+  onNodeDragMove,
   collapsibleHandles,
   collapsedHandles,
   onToggleCollapse = () => {},
   onHideNode = () => {},
   revealAnchors = [],
   onRevealNodes = () => {},
+  selectedHandles,
+  activeDrag = null,
 }: FamilyTreeCanvasProps) {
   const allNodes = [...layout.nodes, ...layout.auxiliary_nodes];
   const maxX = Math.max(0, ...allNodes.map((n) => n.x + n.width));
@@ -57,23 +71,35 @@ export function FamilyTreeCanvas({
         height={pixelHeight}
         totalWidth={maxX}
       />
-      {allNodes.map((node) => (
-        <VerticalNode
-          key={node.handle}
-          node={node}
-          scale={UNIT_PX}
-          zoom={zoom}
-          projectId={projectId}
-          totalWidth={maxX}
-          displayOptions={displayOptions}
-          dateSide={marriageSides.get(node.handle) === "right" ? "left" : "right"}
-          onDragEnd={onNodeDragEnd}
-          isCollapsible={collapsibleHandles?.has(node.handle) ?? false}
-          isCollapsed={collapsedHandles?.has(node.handle) ?? false}
-          onToggleCollapse={onToggleCollapse}
-          onHideNode={onHideNode}
-        />
-      ))}
+      {allNodes.map((node) => {
+        const isSelected = selectedHandles?.has(node.handle) ?? false;
+        // 自分以外が選択グループの一員としてドラッグ中なら、そのオフセット
+        // をプレビューとして追従表示する (自分自身は自前の state で表示済み)。
+        const groupPreviewOffsetPx =
+          isSelected && activeDrag && activeDrag.handle !== node.handle
+            ? activeDrag.offsetPx
+            : null;
+        return (
+          <VerticalNode
+            key={node.handle}
+            node={node}
+            scale={UNIT_PX}
+            zoom={zoom}
+            projectId={projectId}
+            totalWidth={maxX}
+            displayOptions={displayOptions}
+            dateSide={marriageSides.get(node.handle) === "right" ? "left" : "right"}
+            onDragEnd={onNodeDragEnd}
+            onDragMove={onNodeDragMove}
+            isCollapsible={collapsibleHandles?.has(node.handle) ?? false}
+            isCollapsed={collapsedHandles?.has(node.handle) ?? false}
+            onToggleCollapse={onToggleCollapse}
+            onHideNode={onHideNode}
+            isSelected={isSelected}
+            groupPreviewOffsetPx={groupPreviewOffsetPx}
+          />
+        );
+      })}
       {revealAnchors.map((anchor) => {
         const anchorNode = visualNodeByHandle.get(anchor.anchorHandle);
         if (!anchorNode) return null;

@@ -2,14 +2,17 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import "./App.css";
 import { ApiError, getLayout, listPeople, uploadProject } from "./api/client";
 import type { PersonSummary, ProjectSummary } from "./api/client";
+import { buildNodeIndex } from "./canvas/connectorGeometry";
 import { FamilyTreeCanvas } from "./canvas/FamilyTreeCanvas";
 import { computePixelSize } from "./canvas/layoutConstants";
 import { Legend } from "./canvas/Legend";
 import { TitleDisplay } from "./canvas/TitleDisplay";
-import { Viewport } from "./canvas/Viewport";
+import { Viewport, type SelectionRect } from "./canvas/Viewport";
+import type { DragOffsetPx } from "./canvas/VerticalNode";
 import { CommandStack, makeCommand } from "./editing/commandStack";
 import { applyOverrides, createEmptyOverrides, descendantsOf, type Overrides } from "./editing/overrides";
 import { computeRevealAnchors } from "./editing/revealAnchors";
+import { computeGroupMove, computeSelectedHandles } from "./editing/selection";
 import { downloadSvg, serializeChartToSvg } from "./export/exportChart";
 import { DEFAULT_DISPLAY_OPTIONS, type DisplayOptions } from "./types/displayOptions";
 import type { Calendar, LayoutResult } from "./types/layout";
@@ -48,6 +51,13 @@ function App() {
   const [zoom, setZoom] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // 右クリックドラッグによる矩形選択 (RQ-05-11)。選択中のノードは一括で
+  // ドラッグ移動できる。activeDrag は選択グループのうち今まさに物理的に
+  // ドラッグされているノードのプレビュー用オフセット。
+  const [selectedHandles, setSelectedHandles] = useState<Set<string>>(new Set());
+  const [activeDrag, setActiveDrag] = useState<{ handle: string; offsetPx: DragOffsetPx } | null>(
+    null,
+  );
 
   const commandStackRef = useRef(new CommandStack<Overrides>());
   // commandStackRef は変更してもレンダリングを起こさないミュータブルな参照
@@ -145,11 +155,34 @@ function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  function handleNodeDragEnd(handle: string, x: number, y: number) {
-    pushOverridesCommand("ノード移動", {
+  function handleNodeDragEnd(handle: string, deltaX: number, deltaY: number) {
+    setActiveDrag(null);
+    if (!displayLayout) return;
+    // ドラッグされたノードが複数選択中のグループの一員なら、選択中の全員に
+    // 同じ差分を適用して一括移動する (RQ-05-11)。それ以外は単独移動。
+    const targets =
+      selectedHandles.has(handle) && selectedHandles.size > 1
+        ? selectedHandles
+        : new Set([handle]);
+    const nodeByHandle = buildNodeIndex(displayLayout);
+    const moved = computeGroupMove(nodeByHandle, targets, deltaX, deltaY);
+    pushOverridesCommand(targets.size > 1 ? "ノードをまとめて移動" : "ノード移動", {
       ...overrides,
-      node_positions: { ...overrides.node_positions, [handle]: { x, y } },
+      node_positions: { ...overrides.node_positions, ...moved },
     });
+  }
+
+  function handleNodeDragMove(handle: string, offsetPx: DragOffsetPx | null) {
+    setActiveDrag(offsetPx ? { handle, offsetPx } : null);
+  }
+
+  function handleSelectionEnd(rect: SelectionRect) {
+    if (!displayLayout) return;
+    setSelectedHandles(computeSelectedHandles(displayLayout, rect));
+  }
+
+  function handleBackgroundClick() {
+    setSelectedHandles(new Set());
   }
 
   function handleToggleCollapse(handle: string) {
@@ -199,6 +232,7 @@ function App() {
       setBaseLayout(null);
       setRootHandle("");
       setOverrides(createEmptyOverrides());
+      setSelectedHandles(new Set());
       commandStackRef.current.clear();
       setStackVersion((v) => v + 1);
     } catch (err) {
@@ -216,6 +250,7 @@ function App() {
       const result = await getLayout(project.project_id, handle, cal);
       setBaseLayout(result);
       setOverrides(createEmptyOverrides());
+      setSelectedHandles(new Set());
       commandStackRef.current.clear();
       setStackVersion((v) => v + 1);
     } catch (err) {
@@ -291,6 +326,7 @@ function App() {
       setOverrides(doc.overrides ?? createEmptyOverrides());
       setDisplayOptions(doc.display_options ?? DEFAULT_DISPLAY_OPTIONS);
       setTitleSettings(doc.title_settings ?? DEFAULT_TITLE_SETTINGS);
+      setSelectedHandles(new Set());
       commandStackRef.current.clear();
       setStackVersion((v) => v + 1);
     } catch (err) {
@@ -353,6 +389,17 @@ function App() {
           <button type="button" onClick={handleResetOverrides}>
             自動レイアウトを再実行
           </button>
+          {selectedHandles.size > 0 && (
+            <>
+              <span className="app__edit-bar-separator" />
+              <span className="app__selection-indicator">
+                {selectedHandles.size}人を選択中 (右クリックドラッグで矩形選択、選択中のノードをドラッグでまとめて移動)
+              </span>
+              <button type="button" onClick={handleBackgroundClick}>
+                選択解除
+              </button>
+            </>
+          )}
           <span className="app__edit-bar-separator" />
           <label>
             <input
@@ -458,7 +505,12 @@ function App() {
       <main className="app__canvas-area">
         {displayLayout && project ? (
           <>
-            <Viewport zoom={zoom} onZoomChange={setZoom}>
+            <Viewport
+              zoom={zoom}
+              onZoomChange={setZoom}
+              onSelectionEnd={handleSelectionEnd}
+              onBackgroundClick={handleBackgroundClick}
+            >
               <div className="app__chart-row" ref={chartRowRef}>
                 <FamilyTreeCanvas
                   layout={displayLayout}
@@ -466,12 +518,15 @@ function App() {
                   zoom={zoom}
                   displayOptions={displayOptions}
                   onNodeDragEnd={handleNodeDragEnd}
+                  onNodeDragMove={handleNodeDragMove}
                   collapsibleHandles={collapsibleHandles}
                   collapsedHandles={collapsedHandles}
                   onToggleCollapse={handleToggleCollapse}
                   onHideNode={handleHideNode}
                   revealAnchors={revealAnchors}
                   onRevealNodes={handleRevealNodes}
+                  selectedHandles={selectedHandles}
+                  activeDrag={activeDrag}
                 />
                 <TitleDisplay
                   text={titleSettings.text}

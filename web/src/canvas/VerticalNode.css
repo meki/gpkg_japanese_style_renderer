@@ -56,6 +56,13 @@
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
 }
 
+/* 右クリックドラッグによる矩形選択で選ばれたノード (RQ-05-11)。まとめて
+   ドラッグ移動できることを示す。opacity は使わない (背後の接続線が透けて
+   見える不具合の再発を避けるため、既存の spouse-in と同じ理由)。 */
+.vertical-node--selected {
+  box-shadow: 0 0 0 2px var(--fg-focus, #b5321a);
+}
+
 .vertical-node__collapse-toggle {
   writing-mode: horizontal-tb;
   position: absolute;

@@ -38,6 +38,11 @@
   font-size: 13px;
 }
 
+.app__selection-indicator {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
 .app__edit-bar {
   display: flex;
   align-items: center;
