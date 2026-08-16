@@ -50,8 +50,6 @@
 
 `x` / `y` / `width` / `height` は SP-02-07 で述べる抽象座標系（世代軸・並び順軸）での値。方向変換は描画層で行うため、ここでは常に「世代軸 = 縦方向」の座標として格納する。`width` / `height` は罫線で囲むノード本体 (frame) のみの寸法であり、生没年の表記幅・顔写真の高さは含まない。生没年は `date_column_width` 分だけ frame の外側（画面表示では frame の右隣）に、顔写真は `photo_height` 分だけ frame の外側（画面表示では frame の直下）に、それぞれ描画層が独立した領域として配置する (SP-03-06)。`date_column_width` / `photo_height` が 0 の場合はそれぞれ生没年・顔写真を表示しない（対象人物にその情報がない、または表示トグルが OFF）。
 
-`date_column_width` と `photo_height` は現行バックエンドでは常に数値として返す。旧バックエンドから省略または `null` で返された場合、フロントエンドの API 境界で 0（写真がある場合の `photo_height` は `view.has_photo` と `width` から算出した互換値）を補い、キャンバス寸法・接続線・写真表示へ `undefined` / `NaN` を流さない。
-
 ### PersonView
 
 **UID**: DF-01-03 \
