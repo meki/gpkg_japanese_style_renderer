@@ -6,7 +6,47 @@ from gpkg_jsr.format.wareki import format_wareki_year, is_pre_gregorian_adoption
 
 
 class TestEdoPeriodEras:
-    """実データ (山田家系図.gpkg) に現れる江戸期日付 (1833・1840・1863・1864) を含む。"""
+    """江戸期の元号を慶長から令和まで連続して扱う。"""
+
+    @pytest.mark.parametrize(
+        ("year", "expected"),
+        [
+            (1596, "慶長元年"),
+            (1615, "元和元年"),
+            (1624, "寛永元年"),
+            (1644, "正保元年"),
+            (1648, "慶安元年"),
+            (1652, "承応元年"),
+            (1655, "明暦元年"),
+            (1658, "万治元年"),
+            (1661, "寛文元年"),
+            (1673, "延宝元年"),
+            (1681, "天和元年"),
+            (1684, "貞享元年"),
+            (1688, "元禄元年"),
+            (1704, "宝永元年"),
+            (1711, "正徳元年"),
+            (1716, "享保元年"),
+            (1736, "元文元年"),
+            (1741, "寛保元年"),
+            (1744, "延享元年"),
+            (1748, "寛延元年"),
+            (1751, "宝暦元年"),
+            (1764, "明和元年"),
+            (1772, "安永元年"),
+            (1781, "天明元年"),
+            (1789, "寛政元年"),
+            (1801, "享和元年"),
+            (1804, "文化元年"),
+            (1818, "文政元年"),
+            (1830, "天保元年"),
+        ],
+    )
+    def test_era_start_years(self, year: int, expected: str) -> None:
+        assert format_wareki_year(year) == expected
+
+    def test_three_hundred_years_ago_is_supported(self) -> None:
+        assert format_wareki_year(1726) == "享保十一年"
 
     def test_tenpo_start(self) -> None:
         assert format_wareki_year(1830) == "天保元年"
@@ -29,7 +69,7 @@ class TestEdoPeriodEras:
 
     def test_out_of_table_range_raises(self) -> None:
         with pytest.raises(ValueError):
-            format_wareki_year(1800)
+            format_wareki_year(1595)
 
 
 class TestModernEraBoundaries:
