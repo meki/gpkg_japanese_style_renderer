@@ -1,4 +1,12 @@
-import type { LayoutResult, PersonNode } from "../types/layout";
+import type { LayoutResult } from "../types/layout";
+import {
+  buildNodeIndex,
+  buildVisualNodeIndex,
+  computeChildEdgeGeometry,
+  computeMarriageSides,
+  facingEdges,
+  marriageEdgeY,
+} from "./connectorGeometry";
 import "./ConnectorLayer.css";
 
 interface ConnectorLayerProps {
@@ -10,15 +18,12 @@ interface ConnectorLayerProps {
   totalWidth: number;
 }
 
-function centerX(node: PersonNode): number {
-  return node.x + node.width / 2;
-}
-
 export function ConnectorLayer({ layout, scale, width, height, totalWidth }: ConnectorLayerProps) {
-  const nodeByHandle = new Map<string, PersonNode>();
-  for (const node of [...layout.nodes, ...layout.auxiliary_nodes]) {
-    nodeByHandle.set(node.handle, node);
-  }
+  // 生没年列がボックスと左右入れ替わっているノードは、実際に画面へ描画される
+  // ボックス位置に合わせて接続線を引く必要があるため、marriageSides から
+  // 補正済みの座標 (buildVisualNodeIndex) を使う (VerticalNode.tsx と同じ判定)。
+  const marriageSides = computeMarriageSides(layout, buildNodeIndex(layout));
+  const nodeByHandle = buildVisualNodeIndex(layout, marriageSides);
   const mirror = (x: number) => (totalWidth - x) * scale;
 
   return (
@@ -27,29 +32,38 @@ export function ConnectorLayer({ layout, scale, width, height, totalWidth }: Con
         const husband = nodeByHandle.get(edge.husband_handle);
         const wife = nodeByHandle.get(edge.wife_handle);
         if (!husband || !wife) return null;
-        const y = edge.y * scale;
+        const y = marriageEdgeY(husband, wife) * scale;
+        const [edgeA, edgeB] = facingEdges(husband, wife);
         return (
           <line
             key={edge.family_handle}
             className="connector-layer__marriage"
-            x1={mirror(centerX(husband))}
+            x1={mirror(edgeA)}
             y1={y}
-            x2={mirror(centerX(wife))}
+            x2={mirror(edgeB)}
             y2={y}
           />
         );
       })}
-      {layout.child_edges.map((edge, index) => (
-        <polyline
-          key={`${edge.family_handle}-${edge.child_handle}-${index}`}
-          className={
-            edge.relation === "adopted"
-              ? "connector-layer__child connector-layer__child--adopted"
-              : "connector-layer__child"
-          }
-          points={edge.points.map(([x, y]) => `${mirror(x)},${y * scale}`).join(" ")}
-        />
-      ))}
+      {layout.child_edges.map((edge, index) => {
+        const geometry = computeChildEdgeGeometry(
+          edge.parent_handles,
+          edge.child_handle,
+          nodeByHandle,
+        );
+        if (!geometry) return null;
+        return (
+          <polyline
+            key={`${edge.family_handle}-${edge.child_handle}-${index}`}
+            className={
+              edge.relation === "adopted"
+                ? "connector-layer__child connector-layer__child--adopted"
+                : "connector-layer__child"
+            }
+            points={geometry.points.map(([x, y]) => `${mirror(x)},${y * scale}`).join(" ")}
+          />
+        );
+      })}
     </svg>
   );
 }

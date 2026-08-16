@@ -1,0 +1,61 @@
+/* ノード単位で非表示にした人物を再表示するためのハンドル (RQ-05-10)。
+   可視ノードの縁から短いスタブを伸ばし、その先の丸いボタンをクリックすると
+   隣接する非表示ノードが再表示される。 */
+
+.reveal-handle {
+  writing-mode: horizontal-tb;
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px dashed var(--fg-line, #333);
+  background: #fff;
+  color: #555;
+  font-size: 9px;
+  line-height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 5;
+}
+
+.reveal-handle::before {
+  content: "";
+  position: absolute;
+  background: var(--fg-line, #333);
+  opacity: 0.6;
+}
+
+.reveal-handle--up::before {
+  left: 50%;
+  top: 100%;
+  width: 1px;
+  height: 10px;
+  transform: translateX(-50%);
+}
+
+.reveal-handle--down::before {
+  left: 50%;
+  bottom: 100%;
+  width: 1px;
+  height: 10px;
+  transform: translateX(-50%);
+}
+
+.reveal-handle--left::before {
+  top: 50%;
+  left: 100%;
+  width: 10px;
+  height: 1px;
+  transform: translateY(-50%);
+}
+
+.reveal-handle--right::before {
+  top: 50%;
+  right: 100%;
+  width: 10px;
+  height: 1px;
+  transform: translateY(-50%);
+}

@@ -5,7 +5,10 @@
   text-orientation: mixed;
   display: flex;
   flex-direction: row;
-  align-items: flex-start;
+  /* 縦書き (vertical-rl) では row の交差軸が横方向になる。flex-start だと
+     内容が frame の片側に寄って反対側に無駄な余白ができるため、中央寄せに
+     する (実データ確認での指摘: 「top-center」配置)。 */
+  align-items: center;
   gap: 0.2em;
   padding: 0.2em;
   border: 1px solid var(--fg-line, #333);
@@ -27,7 +30,9 @@
 }
 
 .vertical-node--spouse-in {
-  opacity: 0.92;
+  /* opacity は使わない: 半透明にすると背後の接続線が透けて見えてしまう
+     (実データでの目視確認で発覚)。ボックスは常に不透明に保つ。 */
+  border-color: #888;
 }
 
 .vertical-node--no-frame {
@@ -51,6 +56,13 @@
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
 }
 
+/* 右クリックドラッグによる矩形選択で選ばれたノード (RQ-05-11)。まとめて
+   ドラッグ移動できることを示す。opacity は使わない (背後の接続線が透けて
+   見える不具合の再発を避けるため、既存の spouse-in と同じ理由)。 */
+.vertical-node--selected {
+  box-shadow: 0 0 0 2px var(--fg-focus, #b5321a);
+}
+
 .vertical-node__collapse-toggle {
   writing-mode: horizontal-tb;
   position: absolute;
@@ -68,6 +80,30 @@
   cursor: pointer;
 }
 
+.vertical-node__hide-toggle {
+  writing-mode: horizontal-tb;
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--fg-line, #333);
+  background: #fff;
+  color: #555;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.35;
+}
+
+.vertical-node:hover .vertical-node__hide-toggle,
+.vertical-node__hide-toggle:focus-visible {
+  opacity: 1;
+}
+
 .vertical-node__name {
   font-size: 1em;
   line-height: 1.15;
@@ -81,29 +117,47 @@
   opacity: 0.7;
 }
 
-.vertical-node__side {
+.vertical-node__label {
+  writing-mode: vertical-rl;
   font-size: 0.55em;
-  display: flex;
-  flex-direction: row;
-  gap: 0.3em;
   color: #555;
 }
 
-.vertical-node__label {
+/* 生没年は罫線ボックス (frame) の外側、画面表示では frame の右隣に独立した
+   列として配置する (SP-03-06)。frame の高さに引きずられて不必要に縦長に
+   ならないよう、frame とは別要素として絶対配置する。 */
+.vertical-node__date-column {
+  position: absolute;
+  box-sizing: border-box;
   writing-mode: vertical-rl;
-}
-
-.vertical-node__date {
-  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  display: flex;
+  flex-direction: row;
+  gap: 0.2em;
+  padding: 0.1em 0.2em;
+  font-size: 0.55em;
+  color: #555;
+  pointer-events: none;
   white-space: nowrap;
 }
 
-.vertical-node__photo {
+/* 顔写真は罫線ボックス (frame) の外側、画面表示では frame の直下に独立した
+   ブロックとして配置する。frame の高さに含めると名前が短い人物のノードまで
+   不必要に縦長になるため、生没年列と同様に frame とは別要素にする。幅は
+   frame と揃える (SP-03-XX)。 */
+.vertical-node__photo-column {
+  position: absolute;
+  box-sizing: border-box;
   writing-mode: horizontal-tb;
-  width: 2.2em;
-  height: auto;
+  padding-top: 6px;
+  pointer-events: none;
+}
+
+.vertical-node__photo-column img {
+  display: block;
+  width: 100%;
+  height: calc(100% - 6px);
   object-fit: cover;
-  align-self: flex-start;
 }
 
 ruby rt {

@@ -38,6 +38,11 @@
   font-size: 13px;
 }
 
+.app__selection-indicator {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
 .app__edit-bar {
   display: flex;
   align-items: center;
@@ -101,7 +106,9 @@
   .app__edit-bar,
   .viewport__zoom-indicator,
   .legend,
-  .vertical-node__collapse-toggle {
+  .vertical-node__collapse-toggle,
+  .vertical-node__hide-toggle,
+  .reveal-handle {
     display: none !important;
   }
 

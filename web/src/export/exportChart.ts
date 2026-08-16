@@ -13,13 +13,23 @@
 // サーバ側のヘッドレスブラウザによるラスタライズが必要になる。
 
 /** family-tree-canvas 要素 (DOM) を自己完結した SVG 文字列にシリアライズする。 */
-export function serializeChartToSvg(chartElement: HTMLElement): string {
+export async function serializeChartToSvg(chartElement: HTMLElement): Promise<string> {
   const width = chartElement.offsetWidth;
   const height = chartElement.offsetHeight;
 
   const clone = chartElement.cloneNode(true) as HTMLElement;
-  // ドラッグ用のポインタハンドラ等は不要。折りたたみボタンも出力には含めない。
+  // 編集用の UI (ドラッグハンドラ・折りたたみボタン・非表示ボタン・再表示
+  // ハンドル) は印刷ビュー (App.css の @media print) と同様、出力には含めない。
   clone.querySelectorAll(".vertical-node__collapse-toggle").forEach((el) => el.remove());
+  clone.querySelectorAll(".vertical-node__hide-toggle").forEach((el) => el.remove());
+  clone.querySelectorAll(".reveal-handle").forEach((el) => el.remove());
+
+  // 顔写真は `/api/.../photo` への相対 URL を参照しているため、ダウンロードした
+  // .svg 単体をアプリの外 (別タブ・別オリジン・ローカルファイルとして開く等)
+  // で開くとリンク切れになる。単体で完結した SVG にするため data: URI として
+  // 埋め込む。取得に失敗した場合はその画像だけ元の参照のまま残し、SVG 全体の
+  // 出力は継続する。
+  await inlinePhotoImages(clone);
 
   const inlineStyles = collectStylesheetText();
   const serializer = new XMLSerializer();
@@ -32,6 +42,33 @@ export function serializeChartToSvg(chartElement: HTMLElement): string {
     `<foreignObject x="0" y="0" width="${width}" height="${height}">${htmlString}</foreignObject>` +
     `</svg>`
   );
+}
+
+async function inlinePhotoImages(root: HTMLElement): Promise<void> {
+  const images = Array.from(root.querySelectorAll("img"));
+  await Promise.all(
+    images.map(async (img) => {
+      const src = img.getAttribute("src");
+      if (!src || src.startsWith("data:")) return;
+      try {
+        const response = await fetch(src);
+        if (!response.ok) return;
+        const blob = await response.blob();
+        img.setAttribute("src", await blobToDataUrl(blob));
+      } catch {
+        // 取得に失敗してもこの画像だけリンク切れのまま残し、出力全体は続行する。
+      }
+    }),
+  );
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error as DOMException);
+    reader.readAsDataURL(blob);
+  });
 }
 
 function collectStylesheetText(): string {
