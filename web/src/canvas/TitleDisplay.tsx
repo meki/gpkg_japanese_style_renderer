@@ -1,16 +1,25 @@
 import "./TitleDisplay.css";
+import type { TitlePosition } from "../types/titleSettings";
 
 interface TitleDisplayProps {
   text: string;
+  position: TitlePosition;
+  widthPx: number;
   heightPx: number;
   fontSize: number;
 }
 
-/** 標題の縦書き表示 (SP-06-01)。図の右端に、図の全高に合わせて配置する。 */
-export function TitleDisplay({ text, heightPx, fontSize }: TitleDisplayProps) {
+/** Display the title on the right vertically or at the top horizontally (SP-06-01). */
+export function TitleDisplay({ text, position, widthPx, heightPx, fontSize }: TitleDisplayProps) {
   if (!text) return null;
   return (
-    <div className="title-display" style={{ height: heightPx, fontSize }}>
+    <div
+      className={`title-display title-display--${position}`}
+      style={{
+        fontSize,
+        ...(position === "top" ? { width: widthPx } : { height: heightPx }),
+      }}
+    >
       {text}
     </div>
   );

@@ -15,6 +15,12 @@
   flex-wrap: wrap;
 }
 
+.app__toolbar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .app__title {
   font-size: 16px;
   margin: 0;
@@ -80,6 +86,10 @@
   display: flex;
   flex-direction: row;
   align-items: stretch;
+}
+
+.app__chart-row--title-top {
+  flex-direction: column;
 }
 
 .app__canvas-area {
