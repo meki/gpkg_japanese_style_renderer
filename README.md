@@ -37,6 +37,8 @@ uv run mypy src tests
 cd web && npx tsc -b && npm run lint && npm run build
 ```
 
+GitHub Actions の PR CI (`.github/workflows/ci.yml`) でも、上記の Python・フロントエンド検証と `web` のテスト、`docs/` の StrictDoc 検証を実行する。
+
 ## 要件・仕様ドキュメントの検証
 
 `docs/` 配下は [StrictDoc](https://strictdoc.readthedocs.io/) 形式 (Markdown ベース) で記述している。パース検証・HTML 出力は以下で行う。

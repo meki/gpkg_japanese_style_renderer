@@ -1,6 +1,4 @@
 .title-display {
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
   font-family: var(--font-title);
   color: var(--fg-line, #333);
   display: flex;
@@ -10,4 +8,17 @@
   flex-shrink: 0;
   white-space: nowrap;
   letter-spacing: 0.15em;
+}
+
+.title-display--right {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  padding: 0 0.4em;
+}
+
+.title-display--top {
+  writing-mode: horizontal-tb;
+  text-orientation: mixed;
+  min-height: 2.2em;
+  padding: 0.25em 0.8em 0.35em;
 }

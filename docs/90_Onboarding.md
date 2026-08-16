@@ -66,7 +66,7 @@ web/src/
                            (アンカーとなる可視ノードと方向) を計算する (SP-05-06) (Phase 6)
   editing/selection.ts     右クリックドラッグの矩形選択とヒットテスト、選択中
                            ノードのまとめ移動の差分計算を行う純粋関数 (SP-05-07) (Phase 6)
-  canvas/TitleDisplay.tsx  標題の縦書き表示。図の全高に合わせ右端に配置 (SP-06-01) (Phase 5)
+  canvas/TitleDisplay.tsx  標題の右側・縦書き／上部・横書き表示を切替 (SP-06-01) (Phase 5)
   canvas/Legend.tsx        故人の凡例。該当者がいる場合のみ表示 (SP-03-09) (Phase 5)
   canvas/layoutConstants.ts UNIT_PX・ピクセルサイズ計算を FamilyTreeCanvas と
                            App (標題の高さ算出に使う) で共有するための切り出し (Phase 5)

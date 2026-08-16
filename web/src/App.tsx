@@ -16,15 +16,14 @@ import { computeGroupMove, computeSelectedHandles } from "./editing/selection";
 import { downloadSvg, serializeChartToSvg } from "./export/exportChart";
 import { DEFAULT_DISPLAY_OPTIONS, type DisplayOptions } from "./types/displayOptions";
 import type { Calendar, LayoutResult } from "./types/layout";
+import {
+  DEFAULT_TITLE_SETTINGS,
+  normalizeTitleSettings,
+  type TitlePosition,
+  type TitleSettings,
+} from "./types/titleSettings";
 
-// SP-06-01: 標題の文言・大きさ。位置は右端固定、書体は --font-title 固定
-// (書体選択 UI は将来追加)。
-interface TitleSettings {
-  text: string;
-  fontSize: number;
-}
-
-const DEFAULT_TITLE_SETTINGS: TitleSettings = { text: "", fontSize: 28 };
+// SP-06-01: 標題は右側・縦書きを既定とし、上部・横書きへ切り替えられる。
 
 // SP-05-04 のプロジェクト保存形式 (ProjectDocument, DF-03-01) を実装範囲に
 // 合わせて簡略化したもの。永続化はサーバを介さず、ブラウザのファイル保存/
@@ -36,7 +35,7 @@ interface ProjectDocumentV1 {
   calendar: Calendar;
   overrides: Overrides;
   display_options: DisplayOptions;
-  title_settings?: TitleSettings;
+  title_settings?: Partial<TitleSettings>;
 }
 
 function App() {
@@ -112,8 +111,8 @@ function App() {
     );
   }, [displayLayout]);
 
-  const titleHeightPx = useMemo(
-    () => (displayLayout ? computePixelSize(displayLayout).height : 0),
+  const chartSize = useMemo(
+    () => (displayLayout ? computePixelSize(displayLayout) : { width: 0, height: 0 }),
     [displayLayout],
   );
 
@@ -272,6 +271,11 @@ function App() {
     void loadLayout(rootHandle, cal);
   }
 
+  function handleTitlePositionChange(event: ChangeEvent<HTMLSelectElement>) {
+    const position: TitlePosition = event.target.value === "top" ? "top" : "right";
+    setTitleSettings((current) => ({ ...current, position }));
+  }
+
   function toggleDisplayOption(key: keyof DisplayOptions) {
     setDisplayOptions((current) => ({ ...current, [key]: !current[key] }));
   }
@@ -333,7 +337,7 @@ function App() {
       setCalendar(cal);
       setOverrides(doc.overrides ?? createEmptyOverrides());
       setDisplayOptions(doc.display_options ?? DEFAULT_DISPLAY_OPTIONS);
-      setTitleSettings(doc.title_settings ?? DEFAULT_TITLE_SETTINGS);
+      setTitleSettings(normalizeTitleSettings(doc.title_settings));
       setSelectedHandles(new Set());
       commandStackRef.current.clear();
       setStackVersion((v) => v + 1);
@@ -377,6 +381,18 @@ function App() {
               <select value={calendar} onChange={handleCalendarChange} disabled={busy}>
                 <option value="wareki">和暦</option>
                 <option value="western">西暦</option>
+              </select>
+            </label>
+            <label>
+              標題位置:
+              <select
+                aria-label="標題位置"
+                value={titleSettings.position}
+                onChange={handleTitlePositionChange}
+                disabled={busy}
+              >
+                <option value="right">右側・縦書き</option>
+                <option value="top">上部・横書き</option>
               </select>
             </label>
           </>
@@ -519,7 +535,19 @@ function App() {
               onSelectionEnd={handleSelectionEnd}
               onBackgroundClick={handleBackgroundClick}
             >
-              <div className="app__chart-row" ref={chartRowRef}>
+              <div
+                className={`app__chart-row app__chart-row--title-${titleSettings.position}`}
+                ref={chartRowRef}
+              >
+                {titleSettings.position === "top" && (
+                  <TitleDisplay
+                    text={titleSettings.text}
+                    position={titleSettings.position}
+                    widthPx={chartSize.width}
+                    heightPx={chartSize.height}
+                    fontSize={titleSettings.fontSize}
+                  />
+                )}
                 <FamilyTreeCanvas
                   layout={displayLayout}
                   projectId={project.project_id}
@@ -536,11 +564,15 @@ function App() {
                   selectedHandles={selectedHandles}
                   activeDrag={activeDrag}
                 />
-                <TitleDisplay
-                  text={titleSettings.text}
-                  heightPx={titleHeightPx}
-                  fontSize={titleSettings.fontSize}
-                />
+                {titleSettings.position === "right" && (
+                  <TitleDisplay
+                    text={titleSettings.text}
+                    position={titleSettings.position}
+                    widthPx={chartSize.width}
+                    heightPx={chartSize.height}
+                    fontSize={titleSettings.fontSize}
+                  />
+                )}
               </div>
             </Viewport>
             <Legend hasDeceased={hasDeceased} />
