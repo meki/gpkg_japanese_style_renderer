@@ -1,7 +1,13 @@
 // 11_specifications-APIs.md のエンドポイントに対応する fetch ラッパー。
-// vite.config.ts の dev proxy で /api は FastAPI (127.0.0.1:8000) へ転送される。
+// vite.config.ts の dev proxy で /api は FastAPI (127.0.0.1:8001) へ転送される。
 
-import type { Calendar, LayoutResult } from "../types/layout";
+import type { Calendar, LayoutResult, PersonNode } from "../types/layout";
+
+// Compatibility fallback for layout responses produced before photo_height was
+// included in the LayoutResult payload. Keep these values aligned with
+// src/gpkg_jsr/layout/metrics.py until all running backends are current.
+const LEGACY_PHOTO_GAP = 0.15;
+const LEGACY_PHOTO_ASPECT_RATIO = 1.25;
 
 export interface ProjectSummary {
   project_id: string;
@@ -45,6 +51,29 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return (await response.json()) as T;
 }
 
+function normalizePersonNode(node: PersonNode): PersonNode {
+  const dateColumnWidth =
+    typeof node.date_column_width === "number" && Number.isFinite(node.date_column_width)
+      ? node.date_column_width
+      : 0;
+  const photoHeight =
+    typeof node.photo_height === "number" && Number.isFinite(node.photo_height)
+      ? node.photo_height
+      : node.view.has_photo
+        ? LEGACY_PHOTO_GAP + node.width * LEGACY_PHOTO_ASPECT_RATIO
+        : 0;
+  return { ...node, date_column_width: dateColumnWidth, photo_height: photoHeight };
+}
+
+/** Normalize layout payloads from older backends before they reach render code. */
+export function normalizeLayoutResult(layout: LayoutResult): LayoutResult {
+  return {
+    ...layout,
+    nodes: layout.nodes.map(normalizePersonNode),
+    auxiliary_nodes: layout.auxiliary_nodes.map(normalizePersonNode),
+  };
+}
+
 export async function uploadProject(file: File): Promise<ProjectSummary> {
   const formData = new FormData();
   formData.append("file", file);
@@ -64,7 +93,7 @@ export async function getLayout(
 ): Promise<LayoutResult> {
   const params = new URLSearchParams({ root_handle: rootHandle, calendar });
   const response = await fetch(`/api/v1/projects/${projectId}/layout?${params.toString()}`);
-  return handleResponse<LayoutResult>(response);
+  return normalizeLayoutResult(await handleResponse<LayoutResult>(response));
 }
 
 export function personPhotoUrl(projectId: string, personHandle: string): string {
